@@ -214,6 +214,15 @@ class Canvas2DMesh{
         this.dirty = true;
     }
 
+    FillCircle(x, y, radius, fillStyle){
+        const ctx = this.renderer.textures.canvas.ctx;
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.fill(); 
+        this.dirty = true;
+    }
+
     SetSize(x, y, w, h){
         if(x!=this.x || y!=this.y || w!=this.w || h!=this.h){
             this.renderer.textures.canvas.SetSize(w,h);
