@@ -9,8 +9,16 @@ function createIdentityMatrix4() {
     ];
 }
 
+function centerOfVectors(a, b){
+    return [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5, (a[2] + b[2]) * 0.5];
+}
+
 function subtractVectors(a, b) {
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function absVector(vec){
+    return [Math.abs(vec[0]), Math.abs(vec[1]), Math.abs([vec[2]])];
 }
 
 function normalize(v) {
@@ -76,7 +84,7 @@ function createOrthographicMatrix(left, right, bottom, top, near, far) {
     ];
 }
 
-function multiplyPoint(matrix, point) {
+function multiplyPoint4(matrix, point) {
   
     var x = point[0], y = point[1], z = point[2], w = point[3];
     
@@ -91,6 +99,11 @@ function multiplyPoint(matrix, point) {
       x*c3r1 + y*c3r2 + z*c3r3 + w*c3r4,
       x*c4r1 + y*c4r2 + z*c4r3 + w*c4r4
     ];
+}
+
+function multiplyPoint(matrix, point){
+    var [x,y,z,w] = multiplyPoint4(matrix, [point[0], point[1], point[2], 1]);
+    return [x/w, y/w, z/w];
 }
   
 function multiplyMatrices (a, b) {
@@ -138,12 +151,16 @@ function multiplyArrayOfMatrices(matrices) {
     var inputMatrix = matrices[0];
     
     for(var i=1; i < matrices.length; i++) {
-      inputMatrix = MDN.multiplyMatrices(inputMatrix, matrices[i]);
+      inputMatrix = multiplyMatrices(inputMatrix, matrices[i]);
     }
     
     return inputMatrix;
 }
   
+function normalVector(a,b,c){
+    return normalize(cross(subtractVectors(b,a), subtractVectors(c,a)));
+}
+
 function normalMatrix(matrix) {
   
     /*

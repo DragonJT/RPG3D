@@ -112,6 +112,22 @@ class LevelDesigner{
         else if(e.key == 's'){
             download('level.json', JSON.stringify(this.objects));
         }
+        else if(e.key == 'r'){
+            game.objMesh.Clear();
+            var scale = 1/25;
+            game.AddPlaneFromTo([0,-0.5,0], [gl.canvas.width*scale, 0.5, gl.canvas.height*scale]);
+            for(var o of this.objects){
+                if(o.type == 'block'){
+                    game.AddCubeFromTo([o.x*scale, 0, o.y*scale], [o.x2*scale, 1, o.y2*scale]);
+                }
+                else if(o.type == 'player'){
+                    game.camera.x = o.x*scale;
+                    game.camera.y = o.y*scale;
+                }
+            }
+            game.UpdateData();
+            mode = game;
+        }
         this.dirty = true;
     }
 
@@ -138,28 +154,82 @@ class LevelDesigner{
     }
 }
 
+class Game{
+
+    constructor(){
+        this.objMesh = new ObjMesh();
+        this.camera = new FPSCamera(0,0);
+        this.litRenderer = new LitRenderer();
+    }
+
+    AddCubeFromTo(from, to){
+        var center = centerOfVectors(from, to);
+        var size = absVector(subtractVectors(from, to));
+        var matrix = multiplyMatrices(translateMatrix(center[0], center[1], center[2]), scaleMatrix(size[0] * 0.5, size[1] * 0.5, size[2] * 0.5));
+        this.objMesh.AddCube(matrix);
+    }
+
+    AddPlaneFromTo(from, to){
+        var center = centerOfVectors(from, to);
+        var size = absVector(subtractVectors(from, to));
+        var matrix = multiplyMatrices(translateMatrix(center[0], center[1], center[2]), scaleMatrix(size[0] * 0.5, size[1] * 0.5, size[2] * 0.5));
+        this.objMesh.AddPlane(matrix);
+    }
+
+    UpdateData(){
+        this.litRenderer.SetObjMeshData(this.objMesh);
+    }
+
+    KeyDown(e){
+        if(e.key == 'Escape'){
+            mode = levelDesigner;
+            console.log(mode);
+        }
+    }
+
+    Render(){
+        this.camera.Update();
+        gl.enable(gl.DEPTH_TEST);
+        this.litRenderer.Render(createIdentityMatrix4(), this.camera);
+    }
+}
+
 var gl = CreateGL();
 var levelDesigner = new LevelDesigner();
+var game = new Game();
+var mode = levelDesigner;
+var inputKeys = {};
 
 function Draw(){
     gl.clearColor(0.5, 0.5, 0.5, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+    gl.enable(gl.CULL_FACE);
 
-    levelDesigner.Render();
+    if(mode.Render){
+        mode.Render();
+    }
     requestAnimationFrame(Draw);
 }
 
 function KeyDown(e){
-    levelDesigner.KeyDown(e);
+    inputKeys[e.key] = true;
+    if(mode.KeyDown){
+        mode.KeyDown(e);
+    }
 }
 
 function KeyUp(e){
-    levelDesigner.KeyUp(e);
+    inputKeys[e.key] = false;
+    if(mode.KeyUp){
+        mode.KeyUp(e);
+    }
 }
 
 function MouseMove(e){
-    levelDesigner.MouseMove(e);
+    if(mode.MouseMove){
+        mode.MouseMove(e);
+    }
 }
 
 addEventListener('resize', Resize);

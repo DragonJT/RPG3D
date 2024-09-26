@@ -1,5 +1,9 @@
 class ObjMesh{
     constructor(){
+        this.Clear();
+    }
+
+    Clear(){
         this.positions = [];
         this.normals = [];
         this.indices = [];
@@ -8,10 +12,43 @@ class ObjMesh{
     AddFace(positions, normals){
         var vertexID = this.positions.length / 3;
         this.positions.push(...positions.flat());
-        this.normals.push(...normals.flat());
+
+        if(!normals){
+            var normal = normalVector(positions[0], positions[1], positions[2]);
+            this.normals.push(...positions.map(_=>normal).flat());
+        }
+        else{
+            this.normals.push(...normals.flat());
+        }
+
         for(var i=2;i<positions.length;i++){
             this.indices.push(vertexID, vertexID+i-1, vertexID+i);
         }
+    }
+
+    AddPlane(matrix){
+        var a = multiplyPoint(matrix, [-1,0,-1]);
+        var b = multiplyPoint(matrix, [-1,0,1]);
+        var c = multiplyPoint(matrix, [1,0,1]);
+        var d = multiplyPoint(matrix, [1,0,-1]);
+        this.AddFace([a,b,c,d]);
+    }
+
+    AddCube(matrix){
+        var a = multiplyPoint(matrix, [-1,-1,-1]);
+        var b = multiplyPoint(matrix, [-1,1,-1]);
+        var c = multiplyPoint(matrix, [1,1,-1]);
+        var d = multiplyPoint(matrix, [1,-1,-1]);
+        var e = multiplyPoint(matrix, [-1,-1,1]);
+        var f = multiplyPoint(matrix, [-1,1,1]);
+        var g = multiplyPoint(matrix, [1,1,1]);
+        var h = multiplyPoint(matrix, [1,-1,1]);
+        this.AddFace([a,b,c,d]);
+        this.AddFace([h,g,f,e]);
+        this.AddFace([e,f,b,a]);
+        this.AddFace([f,g,c,b]);
+        this.AddFace([g,h,d,c]);
+        this.AddFace([h,e,a,d]);
     }
 
     LoadObj(data){
@@ -193,7 +230,7 @@ class Canvas2DMesh{
         this.renderer.buffers.positions = new ArrayBuffer(2);
         this.renderer.buffers.texCoords = new ArrayBuffer(2);
         this.renderer.buffers.texCoords.SetData([0,0,1,0,1,1,0,1]);
-        this.renderer.SetIndexData([0,1,2,0,2,3]);
+        this.renderer.SetIndexData([0,2,1,0,3,2]);
     }
 
     SetFont(font){
@@ -247,7 +284,7 @@ class Canvas2DMesh{
     }
 }
 
-class LitMesh{
+class LitRenderer{
     constructor(){
         var vertCode =
         `attribute vec3 positions;
@@ -328,10 +365,11 @@ class LitMesh{
 class Camera{
     constructor(roty = 0){
         this.roty = roty;
+        this.origin = [0,0,0];
     }
 
     GetPosition(){
-        return [Math.sin(this.roty)*5,5,Math.cos(this.roty)*5];
+        return [this.origin[0] + Math.cos(this.roty)*5,this.origin[1] + 1.5,this.origin[2] + Math.sin(this.roty)*5];
     }
 
     GetProjection(){
@@ -339,6 +377,52 @@ class Camera{
     }
 
     GetView(){
-        return createLookAtMatrix(this.GetPosition(), [0,0,0], [0,1,0]);
+        return createLookAtMatrix(this.GetPosition(), this.origin, [0,1,0]);
+    }
+}
+
+class FPSCamera{
+    constructor(x,y){
+        this.x = x;
+        this.y = y;
+        this.roty = 0;
+    }
+
+    GetPosition(){
+        return [this.x, 1, this.y];
+    }
+
+    Move(dist){
+        this.x += Math.cos(this.roty) * dist;
+        this.y += Math.sin(this.roty) * dist;
+    }
+
+    GetLookAt(){
+        return [this.x + Math.cos(this.roty), 1, this.y + Math.sin(this.roty)];
+    }
+
+    GetProjection(){
+        return createPerspectiveMatrix(45 * (Math.PI/180), gl.canvas.width/gl.canvas.height, 0.1, 100);
+    }
+
+    GetView(){
+        return createLookAtMatrix(this.GetPosition(), this.GetLookAt(), [0,1,0]);
+    }
+
+    Update(){
+        var speed = 0.04;
+        var rotSpeed = 0.015;
+        if(inputKeys.ArrowUp){
+            this.Move(speed);
+        }
+        if(inputKeys.ArrowDown){
+            this.Move(-speed);
+        }
+        if(inputKeys.ArrowLeft){
+            this.roty-=rotSpeed;
+        }
+        if(inputKeys.ArrowRight){
+            this.roty+=rotSpeed;
+        }
     }
 }
