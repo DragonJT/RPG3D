@@ -9,15 +9,19 @@ function createIdentityMatrix4() {
     ];
 }
 
-function centerOfVectors(a, b){
+function multiplyVec3ByScalar(v, scalar){
+    return [v[0] * scalar, v[1] * scalar, v[2] * scalar];
+}
+
+function centerOfVec3s(a, b){
     return [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5, (a[2] + b[2]) * 0.5];
 }
 
-function subtractVectors(a, b) {
+function subtractVec3s(a, b) {
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
-function absVector(vec){
+function absVec3(vec){
     return [Math.abs(vec[0]), Math.abs(vec[1]), Math.abs([vec[2]])];
 }
 
@@ -35,7 +39,7 @@ function cross(a, b) {
 }
 
 function createLookAtMatrix(eye, target, up) {
-    const f = normalize(subtractVectors(eye, target)); // Forward
+    const f = normalize(subtractVec3s(eye, target)); // Forward
     const r = normalize(cross(up, f)); // Right
     const u = cross(f, r); // Up
 
@@ -158,7 +162,7 @@ function multiplyArrayOfMatrices(matrices) {
 }
   
 function normalVector(a,b,c){
-    return normalize(cross(subtractVectors(b,a), subtractVectors(c,a)));
+    return normalize(cross(subtractVec3s(b,a), subtractVec3s(c,a)));
 }
 
 function normalMatrix(matrix) {

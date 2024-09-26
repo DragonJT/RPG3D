@@ -392,9 +392,12 @@ class FPSCamera{
         return [this.x, 1, this.y];
     }
 
-    Move(dist){
-        this.x += Math.cos(this.roty) * dist;
-        this.y += Math.sin(this.roty) * dist;
+    MoveX(speed){
+        this.x += Math.cos(this.roty) * speed;
+    }
+
+    MoveY(speed){
+        this.y += Math.sin(this.roty) * speed;
     }
 
     GetLookAt(){
@@ -407,22 +410,5 @@ class FPSCamera{
 
     GetView(){
         return createLookAtMatrix(this.GetPosition(), this.GetLookAt(), [0,1,0]);
-    }
-
-    Update(){
-        var speed = 0.04;
-        var rotSpeed = 0.015;
-        if(inputKeys.ArrowUp){
-            this.Move(speed);
-        }
-        if(inputKeys.ArrowDown){
-            this.Move(-speed);
-        }
-        if(inputKeys.ArrowLeft){
-            this.roty-=rotSpeed;
-        }
-        if(inputKeys.ArrowRight){
-            this.roty+=rotSpeed;
-        }
     }
 }
