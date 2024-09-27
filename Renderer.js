@@ -5,13 +5,15 @@ class ObjMesh{
 
     Clear(){
         this.positions = [];
+        this.colors = [];
         this.normals = [];
         this.indices = [];
     }
 
-    AddFace(positions, normals){
+    AddFace(positions, color, normals){
         var vertexID = this.positions.length / 3;
         this.positions.push(...positions.flat());
+        this.colors.push(...positions.map(_=>color).flat());
 
         if(!normals){
             var normal = normalVector(positions[0], positions[1], positions[2]);
@@ -26,15 +28,15 @@ class ObjMesh{
         }
     }
 
-    AddPlane(matrix){
+    AddPlane(matrix, color){
         var a = multiplyPoint(matrix, [-1,0,-1]);
         var b = multiplyPoint(matrix, [-1,0,1]);
         var c = multiplyPoint(matrix, [1,0,1]);
         var d = multiplyPoint(matrix, [1,0,-1]);
-        this.AddFace([a,b,c,d]);
+        this.AddFace([a,b,c,d], color);
     }
 
-    AddCube(matrix){
+    AddCube(matrix, color){
         var a = multiplyPoint(matrix, [-1,-1,-1]);
         var b = multiplyPoint(matrix, [-1,1,-1]);
         var c = multiplyPoint(matrix, [1,1,-1]);
@@ -43,12 +45,12 @@ class ObjMesh{
         var f = multiplyPoint(matrix, [-1,1,1]);
         var g = multiplyPoint(matrix, [1,1,1]);
         var h = multiplyPoint(matrix, [1,-1,1]);
-        this.AddFace([a,b,c,d]);
-        this.AddFace([h,g,f,e]);
-        this.AddFace([e,f,b,a]);
-        this.AddFace([f,g,c,b]);
-        this.AddFace([g,h,d,c]);
-        this.AddFace([h,e,a,d]);
+        this.AddFace([a,b,c,d], color);
+        this.AddFace([h,g,f,e], color);
+        this.AddFace([e,f,b,a], color);
+        this.AddFace([f,g,c,b], color);
+        this.AddFace([g,h,d,c], color);
+        this.AddFace([h,e,a,d], color);
     }
 
     LoadObj(data){
@@ -78,7 +80,7 @@ class ObjMesh{
                     vertexIDs.push(parseFloat(split2[0])-1);
                     normalIDs.push(parseFloat(split2[2])-1);
                 }
-                this.AddFace(vertexIDs.map(v=>positions[v]), normalIDs.map(n=>normals[n]));
+                this.AddFace(vertexIDs.map(v=>positions[v]), [0,0,1], normalIDs.map(n=>normals[n]));
             }
         }
     }
@@ -287,21 +289,25 @@ class Canvas2DMesh{
 class LitRenderer{
     constructor(){
         var vertCode =
-        `attribute vec3 positions;
+        `
+        attribute vec3 positions;
         attribute vec3 normals;
+        attribute vec3 colors;
 
         uniform mat4 view;
         uniform mat4 projection;
         uniform mat4 model;
         uniform mat3 normalMatrix;
 
+        varying vec3 color;
         varying vec3 normal;
         varying vec3 fragPos;
 
         void main(void) {
             fragPos = vec3(model * vec4(positions, 1.0));
             normal = normalMatrix * normals;  
-            
+            color = colors;
+
             gl_Position = projection * view * vec4(fragPos, 1.0);
         }`;
                 
@@ -311,12 +317,12 @@ class LitRenderer{
 
         uniform vec3 viewPos;
 
+        varying vec3 color;
         varying vec3 normal;
         varying vec3 fragPos;
 
         void main(void) {
             vec3 lightColor = vec3(1,1,1);
-            vec3 objectColor = vec3(0,0,1);
             vec3 lightPos = vec3(5,5,5);
 
             float ambientStrength = 0.1;
@@ -333,22 +339,25 @@ class LitRenderer{
             float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
             vec3 specular = specularStrength * spec * lightColor;  
                 
-            vec3 result = (ambient + diffuse + specular) * objectColor;
+            vec3 result = (ambient + diffuse + specular) * color;
             gl_FragColor = vec4(result, 1.0);
         }`;
         this.renderer = new Renderer(CreateShaderProgram(vertCode, fragCode));
         this.renderer.buffers.positions = new ArrayBuffer(3);
         this.renderer.buffers.normals = new ArrayBuffer(3);
+        this.renderer.buffers.colors = new ArrayBuffer(3);
     }
 
-    SetData(positions, normals, indices){
+    SetData(positions, normals, colors, indices){
         this.renderer.buffers.positions.SetData(positions);
         this.renderer.buffers.normals.SetData(normals);
+        this.renderer.buffers.colors.SetData(colors);
         this.renderer.SetIndexData(indices);
+        console.log(this.renderer.buffers.colors, colors);
     }
 
     SetObjMeshData(objMesh){
-        this.SetData(objMesh.positions, objMesh.normals, objMesh.indices);
+        this.SetData(objMesh.positions, objMesh.normals, objMesh.colors, objMesh.indices);
     }
 
     Render(model, camera){

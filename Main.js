@@ -63,38 +63,44 @@ function FileUploader(action){
     };
 }
 
+function CanvasColor(color){
+    return 'rgb('+color[0]*255+','+color[1]*255+','+color[2]*255+')';
+}
+
 class LevelDesigner{
     constructor(){
         this.objects = [];
         this.canvas = new Canvas2DMesh();
+        this.groundColor = [0.8,1,0.4];
+        this.blockColor = [0.1,0.1,0.1];
+        this.playerColor = [0,0,1];
+    }
+
+    DrawObject(o){
+        if(o.type == 'block'){
+            var w = o.x2 - o.x;
+            var h = o.y2 - o.y;
+            var x = o.x;
+            var y = o.y;
+            if(w<0){
+                x = o.x + w;
+                w = Math.abs(w);
+            }
+            if(h<0){
+                y = o.y + h;
+                h = Math.abs(h);
+            }
+            this.canvas.FillRect(x,y,w,h,CanvasColor(this.blockColor));
+        }
+        else if(o.type == 'player'){
+            this.canvas.FillCircle(o.x, o.y, 15, CanvasColor(this.playerColor));
+        }
     }
 
     Draw(){
-        function DrawObject(o){
-            if(o.type == 'block'){
-                var w = o.x2 - o.x;
-                var h = o.y2 - o.y;
-                var x = o.x;
-                var y = o.y;
-                if(w<0){
-                    x = o.x + w;
-                    w = Math.abs(w);
-                }
-                if(h<0){
-                    y = o.y + h;
-                    h = Math.abs(h);
-                }
-                canvas.FillRect(x,y,w,h,'blue');
-            }
-            else if(o.type == 'player'){
-                canvas.FillCircle(o.x, o.y, 15, 'yellow');
-            }
-        }
-
-        var canvas = this.canvas;
-        canvas.FillRect(0,0,this.canvas.w, this.canvas.h, 'rgb(50,50,50)');
+        this.canvas.FillRect(0,0,this.canvas.w, this.canvas.h, CanvasColor(this.groundColor));
         for(var o of this.objects){
-            DrawObject(o);
+            this.DrawObject(o);
         }
     }
 
@@ -115,10 +121,10 @@ class LevelDesigner{
         else if(e.key == 'r'){
             game.Clear();
             var scale = 1/25;
-            game.AddPlaneFromTo([0,-0.5,0], [gl.canvas.width*scale, 0.5, gl.canvas.height*scale]);
+            game.AddPlaneFromTo([0,-0.5,0], [gl.canvas.width*scale, 0.5, gl.canvas.height*scale], this.groundColor);
             for(var o of this.objects){
                 if(o.type == 'block'){
-                    game.AddCubeFromTo([o.x*scale, 0, o.y*scale], [o.x2*scale, 1, o.y2*scale]);
+                    game.AddCubeFromTo([o.x*scale, 0, o.y*scale], [o.x2*scale, 1, o.y2*scale], this.blockColor);
                 }
                 else if(o.type == 'player'){
                     game.camera.x = o.x*scale;
@@ -168,19 +174,19 @@ class Game{
         this.colliders = [];
     }
 
-    AddCubeFromTo(from, to){
+    AddCubeFromTo(from, to, color){
         var center = centerOfVec3s(from, to);
         var size = multiplyVec3ByScalar(absVec3(subtractVec3s(from, to)), 0.5);
         var matrix = multiplyMatrices(translateMatrix(center[0], center[1], center[2]), scaleMatrix(size[0], size[1], size[2]));
         this.colliders.push({center, size});
-        this.objMesh.AddCube(matrix);
+        this.objMesh.AddCube(matrix, color);
     }
 
-    AddPlaneFromTo(from, to){
+    AddPlaneFromTo(from, to, color){
         var center = centerOfVec3s(from, to);
-        var size = absVec3(subtractVec3s(from, to));
-        var matrix = multiplyMatrices(translateMatrix(center[0], center[1], center[2]), scaleMatrix(size[0] * 0.5, size[1] * 0.5, size[2] * 0.5));
-        this.objMesh.AddPlane(matrix);
+        var size = multiplyVec3ByScalar(absVec3(subtractVec3s(from, to)), 0.5);
+        var matrix = multiplyMatrices(translateMatrix(center[0], center[1], center[2]), scaleMatrix(size[0], size[1], size[2]));
+        this.objMesh.AddPlane(matrix, color);
     }
 
     UpdateData(){
