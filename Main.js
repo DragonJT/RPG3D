@@ -9,11 +9,6 @@ function CreateGL(){
     return canvas.getContext('webgl2');
 }
 
-function Resize(){
-    gl.canvas.width = window.innerWidth + 2;
-    gl.canvas.height = window.innerHeight + 2;
-}
-
 function download(filename, text) {
     var element = document.createElement('a');
     element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
@@ -21,9 +16,9 @@ function download(filename, text) {
   
     element.style.display = 'none';
     document.body.appendChild(element);
-  
+    element.addEventListener('click', e=>e.stopPropagation());
     element.click();
-  
+
     document.body.removeChild(element);
 }
 
@@ -67,13 +62,17 @@ function CanvasColor(color){
     return 'rgb('+color[0]*255+','+color[1]*255+','+color[2]*255+')';
 }
 
-class LevelDesigner{
+class LevelEditor{
     constructor(){
         this.objects = [];
         this.canvas = new Canvas2DMesh();
         this.groundColor = [0.8,1,0.4];
         this.blockColor = [0.1,0.1,0.1];
         this.playerColor = [0,0,1];
+        this.mode = 'block';
+        this.clicks = 0;
+        this.ui = new UI([0,0,200,300]);
+        this.ui.AddOptions(['block', 'player'], o=>this.mode = o);
     }
 
     DrawObject(o){
@@ -98,65 +97,85 @@ class LevelDesigner{
     }
 
     Draw(){
+        this.canvas.SetFont(style.fontSize + 'px Arial');
         this.canvas.FillRect(0,0,this.canvas.w, this.canvas.h, CanvasColor(this.groundColor));
         for(var o of this.objects){
             this.DrawObject(o);
         }
     }
 
-    KeyDown(e){
-        if(e.key == 'q' && !this.dragging){
-            this.dragging = true;
-            this.objects.push({type:'block', x:this.mousex, y:this.mousey, x2:this.mousex, y2:this.mousey});
-        }
-        else if(e.key == 'w'){
-            this.objects.push({type:'player', x:this.mousex, y:this.mousey});
-        }
-        else if(e.key == 'l'){
-            FileUploader(f=>this.objects = JSON.parse(f));
-        }
-        else if(e.key == 's'){
-            download('level.json', JSON.stringify(this.objects));
-        }
-        else if(e.key == 'r'){
-            game.Clear();
-            var scale = 1/25;
-            game.AddPlaneFromTo([0,-0.5,0], [gl.canvas.width*scale, 0.5, gl.canvas.height*scale], this.groundColor);
-            for(var o of this.objects){
-                if(o.type == 'block'){
-                    game.AddCubeFromTo([o.x*scale, 0, o.y*scale], [o.x2*scale, 1, o.y2*scale], this.blockColor);
-                }
-                else if(o.type == 'player'){
-                    game.camera.x = o.x*scale;
-                    game.camera.y = o.y*scale;
-                }
-            }
-            game.UpdateData();
-            mode = game;
-        }
-        this.dirty = true;
-    }
-
-    KeyUp(){
-        this.dragging = false;
-    }
-
-    MouseMove(e){
-        this.mousex = e.clientX;
-        this.mousey = e.clientY;
-        if(this.dragging){
-            this.objects[this.objects.length-1].x2 = this.mousex;
-            this.objects[this.objects.length-1].y2 = this.mousey;
-            this.dirty = true;
-        }
-    }
-
-    Render(){
-        gl.disable(gl.DEPTH_TEST);
-        if(this.canvas.SetSize(0,0,gl.canvas.width,gl.canvas.height) || this.dirty){
+    OnEvent(e){
+        if(e.type == 'render'){
+            e.canvas = this.canvas;
+            gl.disable(gl.DEPTH_TEST);
+            this.canvas.SetSize(0,0,gl.canvas.width,gl.canvas.height);
             this.Draw();
         }
-        this.canvas.Render();
+        else{
+            requestAnimationFrame(Render);
+        }
+
+        this.ui.OnEvent(e);
+        if(e.used){
+            return;
+        }
+
+        if(e.type == 'keydown'){
+            if(e.key == 'l'){
+                FileUploader(f=>this.objects = JSON.parse(f));
+            }
+            else if(e.key == 's'){
+                download('level.json', JSON.stringify(this.objects));
+            }
+            else if(e.key == 'r'){
+                game.Clear();
+                var scale = 1/25;
+                game.AddPlaneFromTo([0,-0.5,0], [gl.canvas.width*scale, 0.5, gl.canvas.height*scale], this.groundColor);
+                for(var o of this.objects){
+                    if(o.type == 'block'){
+                        game.AddCubeFromTo([o.x*scale, 0, o.y*scale], [o.x2*scale, 1, o.y2*scale], this.blockColor);
+                    }
+                    else if(o.type == 'player'){
+                        game.camera.x = o.x*scale;
+                        game.camera.y = o.y*scale;
+                    }
+                }
+                game.UpdateData();
+                editor = game;
+            }
+        }
+        else if(e.type == 'click'){
+            console.log(e);
+            if(e.button == 0){
+                if(this.mode == 'block'){
+                    if(this.clicks == 0){
+                        this.objects.push({
+                            type:'block', 
+                            x:mouse.position[0], 
+                            y:mouse.position[1], 
+                            x2:mouse.position[0], 
+                            y2:mouse.position[1]});
+                        this.clicks = 1;
+                    }
+                    else if(this.clicks == 1){
+                        this.clicks = 0;
+                    }
+                }
+                else if(this.mode == 'player'){
+                    this.objects.push({type:'player', x:mouse.position[0], y:mouse.position[1]});
+                }
+            }
+        }
+        else if(e.type == 'mousemove'){
+            if(this.mode == 'block' && this.clicks == 1){
+                var lastObject = this.objects[this.objects.length-1];
+                lastObject.x2 = mouse.position[0];
+                lastObject.y2 = mouse.position[1];
+            }
+        }
+        else if(e.type == 'render'){
+            this.canvas.Render();
+        }
     }
 }
 
@@ -193,12 +212,6 @@ class Game{
         this.litRenderer.SetObjMeshData(this.objMesh);
     }
 
-    KeyDown(e){
-        if(e.key == 'Escape'){
-            mode = levelDesigner;
-        }
-    }
-
     Collision(x,y){
         function CollisionWithCollider(x,y,cx,cy,sx,sy){
             return Math.abs(x-cx) < sx+0.5 && Math.abs(y-cy) < sy+0.5;
@@ -228,71 +241,97 @@ class Game{
     PlayerMovement(){
         var speed = 0.04;
         var rotSpeed = 0.015;
-        if(inputKeys.ArrowUp){
+        if(keys.ArrowUp){
            this.PlayerMove(speed);
         }
-        if(inputKeys.ArrowDown){
+        if(keys.ArrowDown){
             this.PlayerMove(-speed);
         }
-        if(inputKeys.ArrowLeft){
+        if(keys.ArrowLeft){
             this.camera.roty-=rotSpeed;
         }
-        if(inputKeys.ArrowRight){
+        if(keys.ArrowRight){
             this.camera.roty+=rotSpeed;
         }
     }
 
-    Render(){
-        this.PlayerMovement();
-        gl.enable(gl.DEPTH_TEST);
-        this.litRenderer.Render(createIdentityMatrix4(), this.camera);
+    OnEvent(e){
+        if(e.type == 'render'){
+            this.PlayerMovement();
+            gl.enable(gl.DEPTH_TEST);
+            this.litRenderer.Render(createIdentityMatrix4(), this.camera);
+            requestAnimationFrame(Render);
+        }
+        else if(e.type == 'keydown'){
+            if(e.key == 'Escape'){
+                editor = levelEditor;
+            }
+        }
     }
-
-
 }
 
 var gl = CreateGL();
-var levelDesigner = new LevelDesigner();
-var game = new Game();
-var mode = levelDesigner;
-var inputKeys = {};
+var keys = {};
+var mouse = {position:[0,0], lastPosition:[0,0], relativePosition:[0,0], pressed:false};
+var style = {fontSize:25, lineSize:30, padding:8};
 
-function Draw(){
+var levelEditor = new LevelEditor();
+var game = new Game();
+var editor = levelEditor;
+
+
+function Render(){
     gl.clearColor(0.5, 0.5, 0.5, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
     gl.enable(gl.CULL_FACE);
+    editor.OnEvent({type:'render'});
+}
 
-    if(mode.Render){
-        mode.Render();
-    }
-    requestAnimationFrame(Draw);
+function Resize(e){
+    gl.canvas.width = window.innerWidth + 2;
+    gl.canvas.height = window.innerHeight + 2;
+    editor.OnEvent(e);
 }
 
 function KeyDown(e){
-    inputKeys[e.key] = true;
-    if(mode.KeyDown){
-        mode.KeyDown(e);
-    }
+    keys[e.key] = true;
+    editor.OnEvent(e);
 }
 
 function KeyUp(e){
-    inputKeys[e.key] = false;
-    if(mode.KeyUp){
-        mode.KeyUp(e);
-    }
+    keys[e.key] = false;
+    editor.OnEvent(e);
+}
+
+function Click(e){
+    editor.OnEvent(e);
+}
+
+function MouseDown(e){
+    mouse['button'+e.button] = true;
+    editor.OnEvent(e);
+}
+
+function MouseUp(e){
+    mouse['button'+e.button] = false;
+    editor.OnEvent(e);
 }
 
 function MouseMove(e){
-    if(mode.MouseMove){
-        mode.MouseMove(e);
-    }
+    mouse.lastPosition = mouse.position;
+    mouse.position = [e.clientX, e.clientY];
+    mouse.relativePosition = [mouse.position[0] - mouse.lastPosition[0], mouse.position[1] - mouse.lastPosition[1]];
+    editor.OnEvent(e);
 }
 
 addEventListener('resize', Resize);
+addEventListener('click', Click);
 addEventListener('mousemove', MouseMove);
+addEventListener('mousedown', MouseDown);
+addEventListener('mouseup', MouseUp);
 addEventListener('keydown', KeyDown);
 addEventListener('keyup', KeyUp);
-Draw();
+Render();
 
 

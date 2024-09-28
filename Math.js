@@ -1,5 +1,9 @@
 //mixture of chatgpt and MDN https://github.com/gregtatum/mdn-webgl/blob/master/library/matrices.js
 
+function rectContains(rect, point){
+    return point[0] > rect[0] && point[0] < rect[0] + rect[2] && point[1] > rect[1] && point[1] < rect[1] + rect[3];
+}
+
 function createIdentityMatrix4() {
     return [
         1, 0, 0, 0, 

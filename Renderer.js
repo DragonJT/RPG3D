@@ -243,14 +243,19 @@ class Canvas2DMesh{
         const ctx = this.renderer.textures.canvas.ctx;
         ctx.fillStyle = fillStyle;
         ctx.fillText(text,x,y);
-        this.dirty = true;
     }
 
     FillRect(x, y, w, h, fillStyle){
         const ctx = this.renderer.textures.canvas.ctx;
         ctx.fillStyle = fillStyle;
         ctx.fillRect(x,y,w,h);
-        this.dirty = true;
+    }
+
+    StrokeRect(x, y, w, h, width, strokeStyle){
+        const ctx = this.renderer.textures.canvas.ctx;
+        ctx.lineWidth = width;
+        ctx.strokeStyle = strokeStyle;
+        ctx.strokeRect(x,y,w,h);
     }
 
     FillCircle(x, y, radius, fillStyle){
@@ -259,7 +264,11 @@ class Canvas2DMesh{
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
         ctx.fill(); 
-        this.dirty = true;
+    }
+
+    MeasureText(text){
+        const ctx = this.renderer.textures.canvas.ctx;
+        return ctx.measureText(text).width;
     }
 
     SetSize(x, y, w, h){
@@ -270,17 +279,13 @@ class Canvas2DMesh{
             this.y = y;
             this.w = w;
             this.h = h;
-            this.dirty = true;
             return true;
         }
         return false;
     }
 
     Render(){
-        if(this.dirty){
-            this.renderer.textures.canvas.UpdateData();
-            this.dirty = false;
-        }
+        this.renderer.textures.canvas.UpdateData();
         this.renderer.uniforms.matrix = createOrthographicMatrix(0,gl.canvas.width, gl.canvas.height, 0, -1, 1);
         this.renderer.Render();
     }
@@ -353,7 +358,6 @@ class LitRenderer{
         this.renderer.buffers.normals.SetData(normals);
         this.renderer.buffers.colors.SetData(colors);
         this.renderer.SetIndexData(indices);
-        console.log(this.renderer.buffers.colors, colors);
     }
 
     SetObjMeshData(objMesh){
