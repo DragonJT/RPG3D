@@ -11,7 +11,7 @@ class Button{
         if(e.type == 'render'){
             var color = CanvasColor([0.8,0.8,0.8]);
             var borderColor = CanvasColor([0,0.3,0.6]);
-            if(rectContains(this.rect, mouse.position)){
+            if(RectContains(this.rect, mouse.position)){
                 if(mouse.button0){
                     color = CanvasColor([0,0.8,1]);
                 }
@@ -25,7 +25,7 @@ class Button{
             e.canvas.FillText(this.text, this.rect[0] + this.rect[2]*0.5 - textWidth*0.5, this.rect[1]+style.fontSize, 'black');
         }
         else if(e.type == 'click'){
-            if(rectContains(this.rect, mouse.position)){
+            if(RectContains(this.rect, mouse.position)){
                 this.action();
                 e.used = true;
             }
@@ -51,7 +51,7 @@ class Options{
                 if(this.option == option){
                     color = CanvasColor([0,0.8,1]);
                 }
-                if(rectContains(rect, mouse.position)){
+                if(RectContains(rect, mouse.position)){
                     borderColor = CanvasColor([0.5,0.8,1]);
                 }
                 e.canvas.FillRect(rect[0], rect[1], rect[2], rect[3], color);
@@ -60,8 +60,7 @@ class Options{
                 e.canvas.FillText(option, rect[0] + rect[2]*0.5 - textWidth*0.5, rect[1]+style.fontSize, 'black');
             }
             else if(e.type == 'click'){
-                if(rectContains(rect, mouse.position)){
-                    console.log(option);
+                if(RectContains(rect, mouse.position)){
                     this.action(option);
                     this.option = option;
                     e.used = true;
@@ -91,6 +90,7 @@ class UI{
 
     OnEvent(e){
         if(e.type == 'render'){
+            e.canvas.SetFont(style.fontSize + 'px Arial');
             e.canvas.FillRect(this.rect[0], this.rect[1], this.rect[2], this.rect[3], CanvasColor([0.6,0.6,0.6]));
         }
         for(var element of this.elements){

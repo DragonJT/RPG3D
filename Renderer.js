@@ -16,7 +16,7 @@ class ObjMesh{
         this.colors.push(...positions.map(_=>color).flat());
 
         if(!normals){
-            var normal = normalVector(positions[0], positions[1], positions[2]);
+            var normal = Normal(positions[0], positions[1], positions[2]);
             this.normals.push(...positions.map(_=>normal).flat());
         }
         else{
@@ -29,22 +29,22 @@ class ObjMesh{
     }
 
     AddPlane(matrix, color){
-        var a = multiplyPoint(matrix, [-1,0,-1]);
-        var b = multiplyPoint(matrix, [-1,0,1]);
-        var c = multiplyPoint(matrix, [1,0,1]);
-        var d = multiplyPoint(matrix, [1,0,-1]);
+        var a = MultiplyPoint(matrix, [-1,0,-1]);
+        var b = MultiplyPoint(matrix, [-1,0,1]);
+        var c = MultiplyPoint(matrix, [1,0,1]);
+        var d = MultiplyPoint(matrix, [1,0,-1]);
         this.AddFace([a,b,c,d], color);
     }
 
     AddCube(matrix, color){
-        var a = multiplyPoint(matrix, [-1,-1,-1]);
-        var b = multiplyPoint(matrix, [-1,1,-1]);
-        var c = multiplyPoint(matrix, [1,1,-1]);
-        var d = multiplyPoint(matrix, [1,-1,-1]);
-        var e = multiplyPoint(matrix, [-1,-1,1]);
-        var f = multiplyPoint(matrix, [-1,1,1]);
-        var g = multiplyPoint(matrix, [1,1,1]);
-        var h = multiplyPoint(matrix, [1,-1,1]);
+        var a = MultiplyPoint(matrix, [-1,-1,-1]);
+        var b = MultiplyPoint(matrix, [-1,1,-1]);
+        var c = MultiplyPoint(matrix, [1,1,-1]);
+        var d = MultiplyPoint(matrix, [1,-1,-1]);
+        var e = MultiplyPoint(matrix, [-1,-1,1]);
+        var f = MultiplyPoint(matrix, [-1,1,1]);
+        var g = MultiplyPoint(matrix, [1,1,1]);
+        var h = MultiplyPoint(matrix, [1,-1,1]);
         this.AddFace([a,b,c,d], color);
         this.AddFace([h,g,f,e], color);
         this.AddFace([e,f,b,a], color);
@@ -286,7 +286,7 @@ class Canvas2DMesh{
 
     Render(){
         this.renderer.textures.canvas.UpdateData();
-        this.renderer.uniforms.matrix = createOrthographicMatrix(0,gl.canvas.width, gl.canvas.height, 0, -1, 1);
+        this.renderer.uniforms.matrix = OrthographicMatrix(0,gl.canvas.width, gl.canvas.height, 0, -1, 1);
         this.renderer.Render();
     }
 }
@@ -370,27 +370,80 @@ class LitRenderer{
         u.view = camera.GetView();
         u.projection = camera.GetProjection();
         u.viewPos = camera.GetPosition();
-        u.normalMatrix = normalMatrix(model);
+        u.normalMatrix = NormalMatrix(model);
         this.renderer.Render();
     }    
 }
 
-class Camera{
-    constructor(roty = 0){
+class OrbitCamera{
+
+    constructor(origin, distance, rotx, roty){
+        this.rotx = rotx;
         this.roty = roty;
-        this.origin = [0,0,0];
+        this.origin = origin;
+        this.distance = distance;
     }
 
     GetPosition(){
-        return [this.origin[0] + Math.cos(this.roty)*5,this.origin[1] + 1.5,this.origin[2] + Math.sin(this.roty)*5];
+        var dx = Math.cos(this.rotx);
+        var dy = Math.sin(this.rotx);
+        var position = [
+            this.origin[0] + Math.cos(this.roty) * this.distance * dx,
+            this.origin[1] + this.distance * dy,
+            this.origin[2] + Math.sin(this.roty) * this.distance * dx];
+        return position;
     }
 
     GetProjection(){
-        return createPerspectiveMatrix(45 * (Math.PI/180), gl.canvas.width/gl.canvas.height, 0.1, 100);
+        return PerspectiveMatrix(45 * (Math.PI/180), gl.canvas.width/gl.canvas.height, 0.1, 100);
     }
 
     GetView(){
-        return createLookAtMatrix(this.GetPosition(), this.origin, [0,1,0]);
+        return LookAtMatrix(this.GetPosition(), this.origin, [0,1,0]);
+    }
+
+    ScreenToWorldMatrix(){
+        return ScreenToWorldMatrix(this.GetProjection(), this.GetView());
+    }
+
+    OnEvent(e){
+        if(e.type == 'mousemove'){
+            if(keys[' ']){
+                const sensitivity = 0.004;
+                this.roty += mouse.relativePosition[0] * sensitivity;
+                this.rotx += mouse.relativePosition[1] * sensitivity;
+                if(this.rotx > 0.99){
+                    this.rotx = 0.99;
+                }
+                else if(this.rotx < 0.1){
+                    this.rotx = 0.1;
+                }
+            }
+        }
+        else if(e.type == 'render'){
+            const sensitivity = 0.4;
+            var forward = Normalize(Sub(this.origin, this.GetPosition()));
+            forward[1] = 0;
+            var planeFoward = Normalize(forward);
+            var right = Normalize(Cross(planeFoward, [0,1,0]));
+
+            if(keys.ArrowUp){
+                this.origin[0] += planeFoward[0] * sensitivity;
+                this.origin[2] += planeFoward[2] * sensitivity;
+            }
+            if(keys.ArrowDown){
+                this.origin[0] -= planeFoward[0] * sensitivity;
+                this.origin[2] -= planeFoward[2] * sensitivity;
+            }
+            if(keys.ArrowLeft){
+                this.origin[0] -= right[0] * sensitivity;
+                this.origin[2] -= right[2] * sensitivity;
+            }
+            if(keys.ArrowRight){
+                this.origin[0] += right[0] * sensitivity;
+                this.origin[2] += right[2] * sensitivity;
+            }
+        }
     }
 }
 
@@ -418,16 +471,14 @@ class FPSCamera{
     }
 
     GetProjection(){
-        return createPerspectiveMatrix(45 * (Math.PI/180), gl.canvas.width/gl.canvas.height, 0.1, 100);
+        return PerspectiveMatrix(45 * (Math.PI/180), gl.canvas.width/gl.canvas.height, 0.1, 100);
     }
 
     GetView(){
-        return createLookAtMatrix(this.GetPosition(), this.GetLookAt(), [0,1,0]);
+        return LookAtMatrix(this.GetPosition(), this.GetLookAt(), [0,1,0]);
     }
 
     ScreenToWorldMatrix(){
-        var screenMatrix = createOrthographicMatrix(0, gl.canvas.width, gl.canvas.height, 0, -1, 1);
-        var inverseProjViewMatrix = invertMatrix(multiplyMatrices(this.GetProjection(), this.GetView()));
-        return multiplyMatrices(inverseProjViewMatrix, screenMatrix);
+        return ScreenToWorldMatrix(this.GetProjection(), this.GetView());
     }
 }

@@ -1,10 +1,10 @@
 //mixture of chatgpt and MDN https://github.com/gregtatum/mdn-webgl/blob/master/library/matrices.js
 
-function rectContains(rect, point){
+function RectContains(rect, point){
     return point[0] > rect[0] && point[0] < rect[0] + rect[2] && point[1] > rect[1] && point[1] < rect[1] + rect[3];
 }
 
-function createIdentityMatrix4() {
+function Identity() {
     return [
         1, 0, 0, 0, 
         0, 1, 0, 0, 
@@ -13,36 +13,36 @@ function createIdentityMatrix4() {
     ];
 }
 
-function multiplyVec3ByScalar(v, scalar){
+function MulScalar(v, scalar){
     return [v[0] * scalar, v[1] * scalar, v[2] * scalar];
 }
 
-function centerOfVec3s(a, b){
+function Center(a, b){
     return [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5, (a[2] + b[2]) * 0.5];
 }
 
-function subtractVec3s(a, b) {
+function Sub(a, b) {
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
-function addVec3s(a, b) {
+function Add(a, b) {
     return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 }
 
-function absVec3(vec){
+function Abs(vec){
     return [Math.abs(vec[0]), Math.abs(vec[1]), Math.abs([vec[2]])];
 }
 
-function lengthVec3(v) {
+function Length(v) {
     return Math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
 }
 
-function normalize(v) {
-    const length = lengthVec3(v);
+function Normalize(v) {
+    const length = Length(v);
     return length > 0 ? [v[0] / length, v[1] / length, v[2] / length] : [0, 0, 0];
 }
 
-function cross(a, b) {
+function Cross(a, b) {
     return [
         a[1] * b[2] - a[2] * b[1], // x
         a[2] * b[0] - a[0] * b[2], // y
@@ -50,25 +50,24 @@ function cross(a, b) {
     ];
 }
 
-function createLookAtMatrix(eye, target, up) {
-    const f = normalize(subtractVec3s(eye, target)); // Forward
-    const r = normalize(cross(up, f)); // Right
-    const u = cross(f, r); // Up
-
+function LookAtMatrix(eye, target, up) {
+    const f = Normalize(Sub(eye, target)); // Forward
+    const r = Normalize(Cross(up, f)); // Right
+    const u = Cross(f, r); // Up
     return [
         r[0], u[0], f[0], 0,
         r[1], u[1], f[1], 0,
         r[2], u[2], f[2], 0,
-        -dot(r, eye), -dot(u, eye), -dot(f, eye), 1
+        -Dot(r, eye), -Dot(u, eye), -Dot(f, eye), 1
     ];
 }
 
-function dot(a, b) {
+function Dot(a, b) {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
 // Parameters for the perspective matrix
-function createPerspectiveMatrix(fieldOfViewInRadians, aspectRatio, near, far) {
+function PerspectiveMatrix(fieldOfViewInRadians, aspectRatio, near, far) {
     var f = 1.0 / Math.tan(fieldOfViewInRadians / 2);
     var rangeInv = 1 / (near - far);
    
@@ -80,7 +79,7 @@ function createPerspectiveMatrix(fieldOfViewInRadians, aspectRatio, near, far) {
     ];
 }
 
-function createOrthographicMatrix(left, right, bottom, top, near, far) {
+function OrthographicMatrix(left, right, bottom, top, near, far) {
   
     // Each of the parameters represents the plane of the bounding box
     
@@ -100,7 +99,7 @@ function createOrthographicMatrix(left, right, bottom, top, near, far) {
     ];
 }
 
-function multiplyPoint4(matrix, point) {
+function MultiplyPoint4(matrix, point) {
   
     var x = point[0], y = point[1], z = point[2], w = point[3];
     
@@ -117,12 +116,12 @@ function multiplyPoint4(matrix, point) {
     ];
 }
 
-function multiplyPoint(matrix, point){
-    var [x,y,z,w] = multiplyPoint4(matrix, [point[0], point[1], point[2], 1]);
+function MultiplyPoint(matrix, point){
+    var [x,y,z,w] = MultiplyPoint4(matrix, [point[0], point[1], point[2], 1]);
     return [x/w, y/w, z/w];
 }
   
-function multiplyMatrices (a, b) {
+function MultiplyMatrices (a, b) {
     
     // TODO - Simplify for explanation
     // currently taken from https://github.com/toji/gl-matrix/blob/master/src/gl-matrix/mat4.js#L306-L337
@@ -162,22 +161,22 @@ function multiplyMatrices (a, b) {
     return result;
 }
   
-function multiplyArrayOfMatrices(matrices) {
+function MultiplyArrayOfMatrices(matrices) {
     
     var inputMatrix = matrices[0];
     
     for(var i=1; i < matrices.length; i++) {
-      inputMatrix = multiplyMatrices(inputMatrix, matrices[i]);
+      inputMatrix = MultiplyMatrices(inputMatrix, matrices[i]);
     }
     
     return inputMatrix;
 }
   
-function normalVector(a,b,c){
-    return normalize(cross(subtractVec3s(b,a), subtractVec3s(c,a)));
+function Normal(a,b,c){
+    return Normalize(Cross(Sub(b,a), Sub(c,a)));
 }
 
-function normalMatrix(matrix) {
+function NormalMatrix(matrix) {
   
     /*
       This function takes the inverse and then transpose of the provided
@@ -230,7 +229,7 @@ function normalMatrix(matrix) {
     return result;
 }
   
-function rotateXMatrix(a) {
+function RotateXMatrix(a) {
     
     var cos = Math.cos;
     var sin = Math.sin;
@@ -243,7 +242,7 @@ function rotateXMatrix(a) {
     ];
 }
   
-function rotateYMatrix(a) {
+function RotateYMatrix(a) {
   
     var cos = Math.cos;
     var sin = Math.sin;
@@ -256,7 +255,7 @@ function rotateYMatrix(a) {
     ];
 }
   
-function rotateZMatrix(a) {
+function RotateZMatrix(a) {
   
     var cos = Math.cos;
     var sin = Math.sin;
@@ -269,7 +268,7 @@ function rotateZMatrix(a) {
     ];
 }
   
-function translateMatrix(x, y, z) {
+function TranslateMatrix(x, y, z) {
     return [
         1,    0,    0,   0,
         0,    1,    0,   0,
@@ -278,7 +277,7 @@ function translateMatrix(x, y, z) {
     ];
 }
   
-function scaleMatrix(w, h, d) {
+function ScaleMatrix(w, h, d) {
     return [
         w,    0,    0,   0,
         0,    h,    0,   0,
@@ -287,7 +286,7 @@ function scaleMatrix(w, h, d) {
     ];
 }
 
-function invertMatrix(matrix){
+function InvertMatrix(matrix){
     var result = [];
 
 	var n11 = matrix[0], n12 = matrix[4], n13 = matrix[ 8], n14 = matrix[12];
@@ -325,9 +324,30 @@ function invertMatrix(matrix){
 	return result;
 }
 
-function screenToWorldMatrixRay(matrix, point){
-    var a = multiplyPoint(matrix, [point[0], point[1], 0.1]);
-    var b = multiplyPoint(matrix, [point[0], point[1], 100]);
-    var dir = normalize(subtractVec3s(b, a));
+function ScreenToWorldMatrixRay(matrix, point){
+    var a = MultiplyPoint(matrix, [point[0], point[1], 0.1]);
+    var b = MultiplyPoint(matrix, [point[0], point[1], 100]);
+    var dir = Normalize(Sub(b, a));
     return {position:a, direction:[-dir[0], -dir[1], -dir[2]]};
+}
+
+function ScreenToWorldMatrix(projection, view){
+    var screenMatrix = OrthographicMatrix(0, gl.canvas.width, gl.canvas.height, 0, -1, 1);
+    var inverseProjViewMatrix = InvertMatrix(MultiplyMatrices(projection, view));
+    return MultiplyMatrices(inverseProjViewMatrix, screenMatrix);
+}
+
+function RayPoint(ray, t){
+    return Add(ray.position, MulScalar(ray.direction, t));
+}
+
+function RayPlaneIntersection(ray, plane){
+    var denom = Dot(plane.normal, ray.direction);
+    if (Math.abs(denom) > 0.0001)
+    {
+        var t = Dot(Sub(plane.center, ray.position), plane.normal) / denom;
+        if (t >= 0) {
+            return RayPoint(ray, t);
+        }
+    }
 }
