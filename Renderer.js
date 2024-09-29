@@ -424,4 +424,10 @@ class FPSCamera{
     GetView(){
         return createLookAtMatrix(this.GetPosition(), this.GetLookAt(), [0,1,0]);
     }
+
+    ScreenToWorldMatrix(){
+        var screenMatrix = createOrthographicMatrix(0, gl.canvas.width, gl.canvas.height, 0, -1, 1);
+        var inverseProjViewMatrix = invertMatrix(multiplyMatrices(this.GetProjection(), this.GetView()));
+        return multiplyMatrices(inverseProjViewMatrix, screenMatrix);
+    }
 }

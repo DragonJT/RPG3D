@@ -25,12 +25,20 @@ function subtractVec3s(a, b) {
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
+function addVec3s(a, b) {
+    return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
 function absVec3(vec){
     return [Math.abs(vec[0]), Math.abs(vec[1]), Math.abs([vec[2]])];
 }
 
+function lengthVec3(v) {
+    return Math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
+}
+
 function normalize(v) {
-    const length = Math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
+    const length = lengthVec3(v);
     return length > 0 ? [v[0] / length, v[1] / length, v[2] / length] : [0, 0, 0];
 }
 
@@ -279,8 +287,11 @@ function scaleMatrix(w, h, d) {
     ];
 }
 
-function inverse(matrix){
-    var n21 = matrix[1], n22 = matrix[5], n23 = matrix[ 9], n24 = matrix[13];
+function invertMatrix(matrix){
+    var result = [];
+
+	var n11 = matrix[0], n12 = matrix[4], n13 = matrix[ 8], n14 = matrix[12];
+	var n21 = matrix[1], n22 = matrix[5], n23 = matrix[ 9], n24 = matrix[13];
 	var n31 = matrix[2], n32 = matrix[6], n33 = matrix[10], n34 = matrix[14];
 	var n41 = matrix[3], n42 = matrix[7], n43 = matrix[11], n44 = matrix[15];
 
@@ -312,4 +323,11 @@ function inverse(matrix){
 	}
 
 	return result;
+}
+
+function screenToWorldMatrixRay(matrix, point){
+    var a = multiplyPoint(matrix, [point[0], point[1], 0.1]);
+    var b = multiplyPoint(matrix, [point[0], point[1], 100]);
+    var dir = normalize(subtractVec3s(b, a));
+    return {position:a, direction:[-dir[0], -dir[1], -dir[2]]};
 }

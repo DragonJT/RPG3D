@@ -208,6 +208,13 @@ class Game{
         this.objMesh.AddPlane(matrix, color);
     }
 
+    AddCubeLookingAt(from, to, radius, color){
+        var eye = multiplyVec3ByScalar(addVec3s(from, to), 0.5);
+        var length = lengthVec3(subtractVec3s(from, to)) * 0.5;
+        var matrix = multiplyMatrices(invertMatrix(createLookAtMatrix(eye, to, [0,1,0])), scaleMatrix(radius,radius,length));
+        this.objMesh.AddCube(matrix, color);
+    }
+
     UpdateData(){
         this.litRenderer.SetObjMeshData(this.objMesh);
     }
@@ -265,6 +272,11 @@ class Game{
         else if(e.type == 'keydown'){
             if(e.key == 'Escape'){
                 editor = levelEditor;
+            }
+            else if(e.key == 'r'){
+                var ray = screenToWorldMatrixRay(this.camera.ScreenToWorldMatrix(), mouse.position);
+                this.AddCubeLookingAt(ray.position, addVec3s(ray.position, multiplyVec3ByScalar(ray.direction, 100)), 0.02, [1,0,0]);
+                this.UpdateData();
             }
         }
     }
