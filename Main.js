@@ -92,9 +92,14 @@ class SceneView{
 
     AddBoxLookingAt(from, to, radius, color){
         var eye = MulScalar(Add(from, to), 0.5);
-        var length = Length(Sub(from, to)) * 0.5;
+        var length = Distance(from, to) * 0.5;
         var matrix = MultiplyMatrices(InvertMatrix(LookAtMatrix(eye, to, [0,1,0])), ScaleMatrix(radius,radius,length));
         this.objMesh.AddCube(matrix, color);
+    }
+
+    AddCylinder(position, radius, height, color){
+        var matrix = MultiplyMatrices(TranslateMatrix(position[0], height*0.5, position[1]), ScaleMatrix(radius, height, radius));
+        this.objMesh.AddCylinder(matrix, 16, color);
     }
 
     UpdateData(){
@@ -166,7 +171,7 @@ class LevelEditor{
         this.mode = 'box';
         this.clicks = 0;
         this.ui = new UI([0,0,200,300]);
-        this.ui.AddOptions(['box', 'player'], o=>this.mode = o);
+        this.ui.AddOptions(['box', 'player', 'cylinder'], o=>this.mode = o);
         this.sceneView = new SceneView();
         this.UpdateObjects();
     }
@@ -186,6 +191,9 @@ class LevelEditor{
         for(var o of this.objects){
             if(o.type == 'box'){
                 this.sceneView.AddBoxFromTo([o.x, 0, o.y], [o.x2, 1, o.y2], this.boxColor);
+            }
+            else if(o.type == 'cylinder'){
+                this.sceneView.AddCylinder([o.x, o.y], o.r, 1, [1,0,0]);
             }
             /*else if(o.type == 'player'){
                 this.sceneView.camera.x = o.x*scale;
@@ -216,7 +224,7 @@ class LevelEditor{
                             this.objects.push({type:'box', x:p[0], y:p[2], x2:p[0], y2:p[2]});
                             this.clicks = 1;
                             this.UpdateObjects();
-                        })
+                        });
                     }
                     else if(this.clicks == 1){
                         this.clicks = 0;
@@ -224,6 +232,18 @@ class LevelEditor{
                 }
                 else if(this.mode == 'player'){
                     this.objects.push({type:'player', x:mouse.position[0], y:mouse.position[1]});
+                }
+                else if(this.mode == 'cylinder'){
+                    if(this.clicks == 0){
+                        this.MouseRay(p=>{
+                            this.objects.push({type:'cylinder', x:p[0], y:p[2], r:0});
+                            this.clicks = 1;
+                            this.UpdateObjects();
+                        });
+                    }
+                    else if(this.clicks == 1){
+                        this.clicks = 0;
+                    }
                 }
             }
         }
@@ -233,6 +253,13 @@ class LevelEditor{
                     var lastObject = this.objects[this.objects.length-1];
                     lastObject.x2 = p[0];
                     lastObject.y2 = p[2];
+                    this.UpdateObjects();
+                })
+            }
+            else if(this.mode == 'cylinder' && this.clicks == 1){
+                this.MouseRay(p=>{
+                    var lastObject = this.objects[this.objects.length-1];
+                    lastObject.r = Distance([p[0], p[1], p[2]], [lastObject.x, 0, lastObject.y]);
                     this.UpdateObjects();
                 })
             }

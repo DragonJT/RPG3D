@@ -37,6 +37,10 @@ function Length(v) {
     return Math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
 }
 
+function Distance(a, b){
+    return Length(Sub(b, a));
+}
+
 function Normalize(v) {
     const length = Length(v);
     return length > 0 ? [v[0] / length, v[1] / length, v[2] / length] : [0, 0, 0];

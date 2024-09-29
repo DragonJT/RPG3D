@@ -36,6 +36,25 @@ class ObjMesh{
         this.AddFace([a,b,c,d], color);
     }
 
+    AddCylinder(matrix, pointCount, color){
+        var radians = 0;
+        var deltaRadians = 2*Math.PI/pointCount;
+        var topFace = [];
+        var bottomFace = [];
+        for(var i=0;i<pointCount;i++){
+            var a = MultiplyPoint(matrix, [Math.cos(radians), -1, Math.sin(radians)]);
+            var b = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians), -1, Math.sin(radians + deltaRadians)]);
+            var c = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians), 1, Math.sin(radians + deltaRadians)]);
+            var d = MultiplyPoint(matrix, [Math.cos(radians), 1, Math.sin(radians)]);
+            this.AddFace([d,c,b,a], color);
+            radians += deltaRadians;
+            topFace.push(a);
+            bottomFace.push(d);
+        }
+        this.AddFace(topFace, color);
+        this.AddFace(bottomFace.reverse(), color);
+    }
+
     AddCube(matrix, color){
         var a = MultiplyPoint(matrix, [-1,-1,-1]);
         var b = MultiplyPoint(matrix, [-1,1,-1]);
