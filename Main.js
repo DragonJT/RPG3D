@@ -1,23 +1,10 @@
 
 function LevelEditor(){
-    var gl = CreateGL(800, 600);
-    gl.canvas.tabIndex = 0;
-    gl.canvas.focus();
-    var objMesh = new ObjMesh();
-    var camera = OrbitCamera(gl.canvas, [50,0,50], 40, 0.4 * Math.PI, 0);
-    var litRenderer = LitRenderer(gl, camera);
-
-    var mouse = AddMouseMove(gl.canvas);
-    AddMouseDrag(gl.canvas, 0, StartDrag, ContinueDrag)
-    var objects = [];
-    UpdateObjects();
-    Render();
-
     function UpdateObjects(){
         objMesh.Clear();
-        objMesh.AddPlane(GetMatrixFromTo([0,0,0], [100,0,100]), [0.3,1,0.3]);
+        objMesh.AddPlane(GetMatrixFromTo([0,0,0], [100,0,100]), [0.4,1,0.4]);
         for(var o of objects){
-            objMesh.AddCube(GetMatrixFromTo(o.min, o.max), [0,0,1]);
+            objMesh.AddCube(GetMatrixFromTo(o.min, o.max), [0.1,0.1,0.1]);
         }
         litRenderer.SetObjMeshData(objMesh);
     }
@@ -53,6 +40,25 @@ function LevelEditor(){
         litRenderer.Render();
         requestAnimationFrame(Render);
     }
+
+    var canvas = CreateCanvas(1000, 600);
+    canvas.tabIndex = 0;
+    var gl = canvas.getContext('webgl2');
+
+    var objMesh = new ObjMesh();
+    var camera = OrbitCamera(gl.canvas, [50,0,50], 40, 0.4 * Math.PI, 0);
+    var litRenderer = LitRenderer(gl, camera);
+
+    var mouse = AddMouseMove(canvas);
+    AddMouseDrag(gl.canvas, 0, StartDrag, ContinueDrag)
+    var objects = [];
+    UpdateObjects();
+    Render();
+    return canvas;
 }
 
-LevelEditor();
+var inspector = Div({width:'200px', float:'left'},[Button('HELLO WORLD')]);
+var levelEditor = LevelEditor();
+var levelEditorDiv = Div({marginLeft:'220px'},[levelEditor]);
+document.body.appendChild(Div({}, [inspector, levelEditorDiv]));
+levelEditor.focus();

@@ -224,13 +224,12 @@ function LitRenderer(gl, camera){
 
     void main(void) {
         vec3 lightColor = vec3(1,1,1);
-        vec3 lightPos = vec3(5,5,5);
+        vec3 lightDir = normalize(vec3(1,1,1));
 
         float ambientStrength = 0.1;
         vec3 ambient = ambientStrength * lightColor;
         
         vec3 norm = normalize(normal);
-        vec3 lightDir = normalize(lightPos - fragPos);
         float diff = max(dot(norm, lightDir), 0.0);
         vec3 diffuse = diff * lightColor;
         

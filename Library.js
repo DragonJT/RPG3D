@@ -1,12 +1,9 @@
 
-function CreateGL(width, height){
+function CreateCanvas(width, height){
     var canvas = document.createElement('canvas');
-    document.body.appendChild(canvas);
     canvas.width = width;
     canvas.height = height;
-    document.body.style.margin = '0px';
-    document.body.style.overflow = 'hidden';
-    return canvas.getContext('webgl2');
+    return canvas;
 }
 
 function download(filename, text) {
@@ -66,7 +63,8 @@ function AddMouseMove(htmlElement){
     var mouse = {position:[0,0], lastPosition:[0,0], relativePosition:[0,0]};
     htmlElement.addEventListener('mousemove', e=>{
         mouse.lastPosition = mouse.position;
-        mouse.position = [e.clientX, e.clientY];
+        var rect = htmlElement.getBoundingClientRect();
+        mouse.position = [e.clientX - rect.left, e.clientY - rect.top];
         mouse.relativePosition = [mouse.position[0] - mouse.lastPosition[0], mouse.position[1] - mouse.lastPosition[1]];
     });
     return mouse;
