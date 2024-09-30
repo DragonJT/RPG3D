@@ -36,6 +36,27 @@ class ObjMesh{
         this.AddFace([a,b,c,d], color);
     }
 
+    AddSphere(matrix, pointCount, color){
+        var deltaRadians = 2*Math.PI/pointCount;
+        var radiansY = 0;
+        for(var ii=0;ii<pointCount;ii++){
+            var radians = 0;
+            var radius0 = Math.cos(radiansY);
+            var radius1 = Math.cos(radiansY + deltaRadians);
+            var h0 = Math.sin(radiansY);
+            var h1 = Math.sin(radiansY + deltaRadians);
+            for(var i=0;i<pointCount;i++){
+                var a = MultiplyPoint(matrix, [Math.cos(radians) * radius0, h0, Math.sin(radians) * radius0]);
+                var b = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians) * radius0, h0, Math.sin(radians + deltaRadians) * radius0]);
+                var c = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians) * radius1, h1, Math.sin(radians + deltaRadians) * radius1]);
+                var d = MultiplyPoint(matrix, [Math.cos(radians) * radius1, h1, Math.sin(radians) * radius1]);
+                this.AddFace([d,c,b,a], color);
+                radians += deltaRadians;
+            }
+            radiansY += deltaRadians;
+        }
+    }
+
     AddCylinder(matrix, pointCount, color){
         var radians = 0;
         var deltaRadians = 2*Math.PI/pointCount;
@@ -55,7 +76,7 @@ class ObjMesh{
         this.AddFace(bottomFace.reverse(), color);
     }
 
-    AddCube(matrix, color){
+    AddBox(matrix, color){
         var a = MultiplyPoint(matrix, [-1,-1,-1]);
         var b = MultiplyPoint(matrix, [-1,1,-1]);
         var c = MultiplyPoint(matrix, [1,1,-1]);
@@ -223,6 +244,14 @@ function LitRenderer(gl, camera){
     varying vec3 fragPos;
 
     void main(void) {
+        vec3 objColor = color;
+        float fx = fract(fragPos.x);
+        float fz = fract(fragPos.z);
+        float fdot = dot(normal, vec3(0,1,0));
+        if((fdot < -0.95 || fdot > 0.95) && (fx < 0.05 || fz < 0.05)){
+            objColor = vec3(1,1,1);
+        }
+
         vec3 lightColor = vec3(1,1,1);
         vec3 lightDir = normalize(vec3(1,1,1));
 
@@ -239,7 +268,7 @@ function LitRenderer(gl, camera){
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
         vec3 specular = specularStrength * spec * lightColor;  
             
-        vec3 result = (ambient + diffuse + specular) * color;
+        vec3 result = (ambient + diffuse + specular) * objColor;
         gl_FragColor = vec4(result, 1.0);
     }`;
     var renderer = Renderer(gl, vertCode, fragCode);

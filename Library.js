@@ -1,10 +1,20 @@
 
-function CreateCanvas(width, height){
-    var canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    return canvas;
+
+function Hex2RGB(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return [ r/255, g/255, b/255 ];
 }
+
+function Component2Hex(c) {
+    var hex = Math.round(c).toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+  }
+  
+function RGB2Hex(color) {
+    return "#" + Component2Hex(color[0] * 255) + Component2Hex(color[1] * 255) + Component2Hex(color[2] * 255);
+  }
 
 function download(filename, text) {
     var element = document.createElement('a');
@@ -60,28 +70,49 @@ function CanvasColor(color){
 }
 
 function AddMouseMove(htmlElement){
-    var mouse = {position:[0,0], lastPosition:[0,0], relativePosition:[0,0]};
+    var mouse = {position:[0,0], lastPosition:[0,0], deltaPosition:[0,0]};
     htmlElement.addEventListener('mousemove', e=>{
         mouse.lastPosition = mouse.position;
         var rect = htmlElement.getBoundingClientRect();
         mouse.position = [e.clientX - rect.left, e.clientY - rect.top];
-        mouse.relativePosition = [mouse.position[0] - mouse.lastPosition[0], mouse.position[1] - mouse.lastPosition[1]];
+        mouse.deltaPosition = [mouse.position[0] - mouse.lastPosition[0], mouse.position[1] - mouse.lastPosition[1]];
     });
     return mouse;
 }
 
-function AddKeys(htmlElement){
+function AddKeys(htmlElement, validKeys){
     var keys = {};
+    var entered = false;
 
     function KeyDown(e){
-        keys[e.key] = true;
+        if(validKeys.includes(e.key)){
+            keys[e.key] = true;
+            e.preventDefault();
+            if(entered && htmlElement!=document.activeElement){
+                htmlElement.focus();
+            }
+        }
     }
     
     function KeyUp(e){
-        keys[e.key] = false;
+        if(validKeys.includes(e.key)){
+            keys[e.key] = false;
+            e.preventDefault();
+        }
     }
-    htmlElement.addEventListener('keydown', KeyDown);
-    htmlElement.addEventListener('keyup', KeyUp);
+
+    function MouseEnter(e){
+        entered = true;
+    }
+
+    function MouseLeave(e){
+        entered = false;
+    }
+
+    htmlElement.addEventListener('mouseenter', MouseEnter);
+    htmlElement.addEventListener('mouseleave', MouseLeave);
+    addEventListener('keydown', KeyDown);
+    addEventListener('keyup', KeyUp);
     return keys;
 }
 
@@ -114,9 +145,10 @@ function AddMouseDrag(htmlElement, button, startDrag, continueDrag){
 
 function OrbitCamera(canvas, origin, distance, rotx, roty){
     var mouse = AddMouseMove(canvas, MouseMove);
-    var keys = AddKeys(canvas);
+    var keys = AddKeys(canvas, ['=', '-', 'Alt', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
     canvas.addEventListener('mousemove', MouseMove);
     Update();
+    
 
     function GetPosition(){
         var dx = Math.cos(rotx);
@@ -137,10 +169,10 @@ function OrbitCamera(canvas, origin, distance, rotx, roty){
     }
 
     function MouseMove(){
-        if(keys[' ']){
+        if(keys.Alt){
             const sensitivity = 0.004;
-            roty += mouse.relativePosition[0] * sensitivity;
-            rotx += mouse.relativePosition[1] * sensitivity;
+            roty += mouse.deltaPosition[0] * sensitivity;
+            rotx += mouse.deltaPosition[1] * sensitivity;
             if(rotx > 0.99){
                 rotx = 0.99;
             }
@@ -151,29 +183,41 @@ function OrbitCamera(canvas, origin, distance, rotx, roty){
     }
 
     function Update(){
-        const sensitivity = 0.4;
+        const sensitivity = 0.01;
         var forward = Normalize(Sub(origin, GetPosition()));
         forward[1] = 0;
         var planeFoward = Normalize(forward);
         var right = Normalize(Cross(planeFoward, [0,1,0]));
 
+        const zoomSensitivity = 0.98;
+        if(keys['=']){
+            distance *= zoomSensitivity;
+            if(distance < 1){
+                distance = 1;
+            }
+        }
+        if(keys['-']){
+            distance /= zoomSensitivity;
+        }
+        const moveSensitivity = sensitivity * distance;
         if(keys.ArrowUp){
-            origin[0] += planeFoward[0] * sensitivity;
-            origin[2] += planeFoward[2] * sensitivity;
+            origin[0] += planeFoward[0] * moveSensitivity;
+            origin[2] += planeFoward[2] * moveSensitivity;
         }
         if(keys.ArrowDown){
-            origin[0] -= planeFoward[0] * sensitivity;
-            origin[2] -= planeFoward[2] * sensitivity;
+            origin[0] -= planeFoward[0] * moveSensitivity;
+            origin[2] -= planeFoward[2] * moveSensitivity;
         }
         if(keys.ArrowLeft){
-            origin[0] -= right[0] * sensitivity;
-            origin[2] -= right[2] * sensitivity;
+            origin[0] -= right[0] * moveSensitivity;
+            origin[2] -= right[2] * moveSensitivity;
         }
         if(keys.ArrowRight){
-            origin[0] += right[0] * sensitivity;
-            origin[2] += right[2] * sensitivity;
+            origin[0] += right[0] * moveSensitivity;
+            origin[2] += right[2] * moveSensitivity;
         }
         requestAnimationFrame(Update);
+        
     }
 
     return {GetPosition, GetView, GetProjection, ScreenToWorldMatrix };
