@@ -335,8 +335,8 @@ function ScreenToWorldMatrixRay(matrix, point){
     return {position:a, direction:[-dir[0], -dir[1], -dir[2]]};
 }
 
-function ScreenToWorldMatrix(projection, view){
-    var screenMatrix = OrthographicMatrix(0, gl.canvas.width, gl.canvas.height, 0, -1, 1);
+function ScreenToWorldMatrix(canvas, projection, view){
+    var screenMatrix = OrthographicMatrix(0, canvas.width, canvas.height, 0, -1, 1);
     var inverseProjViewMatrix = InvertMatrix(MultiplyMatrices(projection, view));
     return MultiplyMatrices(inverseProjViewMatrix, screenMatrix);
 }
@@ -354,4 +354,16 @@ function RayPlaneIntersection(ray, plane){
             return RayPoint(ray, t);
         }
     }
+}
+
+function GetMatrixFromTo(from, to){
+    var center = Center(from, to);
+    var size = MulScalar(Abs(Sub(from, to)), 0.5);
+    return MultiplyMatrices(TranslateMatrix(center[0], center[1], center[2]), ScaleMatrix(size[0], size[1], size[2]));
+}
+
+function GetMatrixLookingAt(from, to, radius, color){
+    var eye = MulScalar(Add(from, to), 0.5);
+    var length = Distance(from, to) * 0.5;
+    return MultiplyMatrices(InvertMatrix(LookAtMatrix(eye, to, [0,1,0])), ScaleMatrix(radius,radius,length));
 }
