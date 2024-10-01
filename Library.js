@@ -161,7 +161,7 @@ function OrbitCamera(canvas, origin, distance, rotx, roty){
     }
 
     function GetProjection(){
-        return PerspectiveMatrix(45 * (Math.PI/180), canvas.width/canvas.height, 0.1, 100);
+        return PerspectiveMatrix(45 * (Math.PI/180), canvas.width/canvas.height, 0.1, 1000);
     }
 
     function GetView(){

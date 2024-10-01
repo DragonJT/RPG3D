@@ -1,30 +1,58 @@
 
 function LevelEditor(){
+
     function UpdateObjects(){
         objMesh.Clear();
-        objMesh.AddPlane(GetMatrixFromTo([0,0,0], [100,0,100]), [0.4,1,0.4]);
         for(var o of objects){
+            var matrix;
+            if(o.positioning == 'ontop'){
+                var pointOffset = MulScalar(o.normal, o.sizeY);
+                matrix = GetMatrixFromTo(o.min, Add(o.max, pointOffset));
+            }
+            if(o.positioning == 'centered'){
+                var pointOffset = MulScalar(o.normal, o.sizeY*0.5);
+                matrix = GetMatrixFromTo(Sub(o.min, pointOffset), Add(o.max, pointOffset));
+            }
             if(o.shape == 'box'){
-                objMesh.AddBox(GetMatrixFromTo(o.min, o.max), o.color);
+                objMesh.AddBox(matrix, o.color);
             }
             else if(o.shape == 'cylinder'){
-                objMesh.AddCylinder(GetMatrixFromTo(o.min, o.max), 32, o.color);
+                objMesh.AddCylinder(matrix, 32, o.color);
+            }
+            else if(o.shape == 'cone'){
+                objMesh.AddCone(matrix, 32, o.color);
             }
             else if(o.shape == 'sphere'){
-                objMesh.AddSphere(GetMatrixFromTo(o.min, o.max), 32, o.color);
+                objMesh.AddSphere(matrix, 32, o.color);
             }
         }
         litRenderer.SetObjMeshData(objMesh);
     }
 
+    function AxisMatrix(){
+        if(axis == 'xy'){
+            return LookAtMatrix([0,0,0], [1,0,0], [0,0,1]);
+        }
+        if(axis == 'xz'){
+            return LookAtMatrix([0,0,0], [1,0,0], [0,1,0]);
+        }
+        if(axis == 'yz'){
+            return LookAtMatrix([0,0,0], [0,1,0], [1,0,0]);
+        }
+    }
+
+    function GridPlaneMatrix(){
+        return MultiplyMatrices(AxisMatrix(), TranslateMatrix(0,gridY,0));
+    }
+
     function StartDrag(){
-        MouseRay(mouse.position, p=>objects.push({shape, min:[p[0], minY, p[2]], max:[p[0], maxY, p[2]], color}));
+        MouseRay(mouse.position, (p, normal)=>objects.push({shape, min:p, max:p, normal, sizeY, positioning, color}));
     }
 
     function ContinueDrag(){
-        MouseRay(mouse.position, p=>{
+        MouseRay(mouse.position, (p, _)=>{
             var lastObject = objects[objects.length-1];
-            lastObject.max = [p[0], maxY, p[2]];
+            lastObject.max = p;
             UpdateObjects();
         });
     }
@@ -32,10 +60,12 @@ function LevelEditor(){
     function MouseRay(position, action){
         var matrix = ScreenToWorldMatrix(gl.canvas, camera.GetProjection(), camera.GetView());
         var ray = ScreenToWorldMatrixRay(matrix, position);
-        var plane = {center:[0,0,0], normal:[0,1,0]};
+        var planeMatrix = AxisMatrix();
+        var normal = MultiplyPoint(planeMatrix, [0,1,0]);
+        var plane = {center:MultiplyPoint(planeMatrix, [0,gridY,0]), normal};
         var point = RayPlaneIntersection(ray, plane);
         if(point){
-            action(point);
+            action(point, normal);
         }
     }
 
@@ -46,6 +76,8 @@ function LevelEditor(){
         gl.enable(gl.CULL_FACE);
         gl.enable(gl.DEPTH_TEST);
         litRenderer.Render();
+
+        gridRenderer.Render(GridPlaneMatrix());
         requestAnimationFrame(Render);
     }
 
@@ -54,13 +86,16 @@ function LevelEditor(){
     var gl = canvas.getContext('webgl2');
 
     var objMesh = new ObjMesh();
-    var camera = OrbitCamera(gl.canvas, [50,0,50], 40, 0.4 * Math.PI, 0);
+    var camera = OrbitCamera(gl.canvas, [0,0,0], 40, 0, 0);
     var litRenderer = LitRenderer(gl, camera);
+    var gridRenderer = GridRenderer(gl, camera, 100);
 
+    var axis = 'xz';
     var mouse = AddMouseMove(canvas);
-    var minY = 0;
-    var maxY = 1;
+    var gridY = 0;
+    var sizeY = 1;
     var shape = 'box';
+    var positioning = 'ontop';
     var color = [1,0.5,0];
     requestAnimationFrame(()=>canvas.focus());
 
@@ -69,10 +104,28 @@ function LevelEditor(){
     UpdateObjects();
     Render();
     var inspector = Div({width:'200px', float:'left'},[
-        Select('shape', ['box', 'cylinder', 'sphere'], v=>shape = v),
+        Select('axis', ['xy', 'xz', 'yz'], axis, v=>axis = v),
+        Select('shape', ['box', 'cylinder', 'cone', 'sphere'], shape, v=>shape = v),
+        Select('positioning', ['ontop', 'centered'], positioning, v=>positioning = v),
         ColorBox('color', color, v=>color=v),
-        FloatBox('minY', minY, v=>minY = v),
-        FloatBox('maxY', maxY, v=>maxY = v),
+        FloatBox('gridY', gridY, v=>gridY = v),
+        FloatBox('sizeY', sizeY, v=>sizeY = v),
+        Button('ApplyToLast', ()=>{
+            if(objects.length>0){
+                var last = objects[objects.length-1];
+                last.shape = shape;
+                last.color = color;
+                last.positioning = positioning;
+                last.sizeY = sizeY;
+                UpdateObjects();
+            }
+        }),
+        Button('DeleteLast', ()=>{
+            if(objects.length>0){
+                objects.pop();
+                UpdateObjects();
+            }
+        }),
     ]);
     var canvasDiv = Div({marginLeft:'220px'},[canvas]);
     

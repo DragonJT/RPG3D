@@ -6,18 +6,23 @@ function CreateCanvas(width, height){
     return canvas;
 }
 
-function Select(name, options, onchange){
+function Select(name, options, value, onchange){
     var label = document.createElement('label');
     label.innerHTML = name;
     label.htmlFor = name;
 
     var select = document.createElement('select');
     select.id = name;
+    var optionsHTML = '';
     for(var o of options){
-        var option = document.createElement('option');
-        option.innerHTML = o;
-        select.appendChild(option);
+        if(o == value){
+            optionsHTML += '<option selected>'+o+'</option>';
+        }
+        else{
+            optionsHTML += '<option>'+o+'</option>';
+        }
     }
+    select.innerHTML = optionsHTML;
     select.onchange = ()=>onchange(select.value);
     return Div({}, [label, select]);
 }
