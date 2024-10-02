@@ -344,16 +344,24 @@ function GridRenderer(gl, camera, radiusCount){
     for(var x=-radiusCount;x<radiusCount;x++){
         positions.push(x,0,-radiusCount);
         positions.push(x,0,radiusCount);
-        colors.push(0,1,0);
-        colors.push(0,1,0);
+        if(x==0){
+            colors.push(1,1,1,1,1,1);
+        }
+        else{
+            colors.push(0,1,0,0,1,0);
+        }
         indices.push(vertexID, vertexID+1);
         vertexID+=2;
     }
     for(var y=-radiusCount;y<radiusCount;y++){
         positions.push(-radiusCount,0,y);
         positions.push(radiusCount,0,y);
-        colors.push(0,1,0);
-        colors.push(0,1,0);
+        if(y==0){
+            colors.push(1,1,1,1,1,1);
+        }
+        else{
+            colors.push(0,1,0,0,1,0);
+        }
         indices.push(vertexID, vertexID+1);
         vertexID+=2;
     }

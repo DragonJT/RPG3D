@@ -69,13 +69,16 @@ function CanvasColor(color){
     return 'rgb('+color[0]*255+','+color[1]*255+','+color[2]*255+')';
 }
 
-function AddMouseMove(htmlElement){
+function AddMouseMove(htmlElement, action){
     var mouse = {position:[0,0], lastPosition:[0,0], deltaPosition:[0,0]};
-    htmlElement.addEventListener('mousemove', e=>{
+    addEventListener('mousemove', e=>{
         mouse.lastPosition = mouse.position;
         var rect = htmlElement.getBoundingClientRect();
         mouse.position = [e.clientX - rect.left, e.clientY - rect.top];
         mouse.deltaPosition = [mouse.position[0] - mouse.lastPosition[0], mouse.position[1] - mouse.lastPosition[1]];
+        if(action){
+            action();
+        }
     });
     return mouse;
 }
@@ -85,17 +88,19 @@ function AddKeys(htmlElement, validKeys){
     var entered = false;
 
     function KeyDown(e){
-        if(validKeys.includes(e.key)){
+        if(entered && validKeys.includes(e.key)){
             keys[e.key] = true;
-            e.preventDefault();
-            if(entered && htmlElement!=document.activeElement){
+            if(htmlElement!=document.activeElement){
                 htmlElement.focus();
             }
+        }
+        if(keys[e.key]){
+            e.preventDefault();
         }
     }
     
     function KeyUp(e){
-        if(validKeys.includes(e.key)){
+        if(keys[e.key]){
             keys[e.key] = false;
             e.preventDefault();
         }
@@ -118,9 +123,13 @@ function AddKeys(htmlElement, validKeys){
 
 function AddMouseDrag(htmlElement, button, startDrag, continueDrag){
     var dragging = false;
+    var entered = false;
 
     function MouseDown(e){
-        if(e.button == button && !dragging){
+        if(entered && e.button == button && !dragging){
+            if(htmlElement != document.activeElement){
+                htmlElement.focus();
+            }
             dragging = true;
             startDrag();
         }
@@ -138,15 +147,24 @@ function AddMouseDrag(htmlElement, button, startDrag, continueDrag){
         }
     }
 
-    htmlElement.addEventListener('mousedown', MouseDown);
-    htmlElement.addEventListener('mouseup', MouseUp);
-    htmlElement.addEventListener('mousemove', MouseMove);
+    function MouseEnter(){
+        entered = true;
+    }
+
+    function MouseLeave(){
+        entered = false;
+    }
+
+    htmlElement.addEventListener('mouseenter', MouseEnter);
+    htmlElement.addEventListener('mouseleave', MouseLeave);
+    addEventListener('mousedown', MouseDown);
+    addEventListener('mouseup', MouseUp);
+    addEventListener('mousemove', MouseMove);
 }
 
 function OrbitCamera(canvas, origin, distance, rotx, roty){
     var mouse = AddMouseMove(canvas, MouseMove);
     var keys = AddKeys(canvas, ['=', '-', 'Alt', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
-    canvas.addEventListener('mousemove', MouseMove);
     Update();
     
 
