@@ -15,43 +15,39 @@ function LevelEditor(){
         return obj == objects[selectedID];
     }
 
-    function GetMesh(objects){
-        var objMesh = new ObjMesh();
+    function RenderObjects(model, objects, depth, allSelected){
         for(var o of objects){
             var matrix;
             if(o.positioning == 'ontop'){
                 var pointOffset = MulScalar(o.normal, o.sizeY);
-                matrix = GetMatrixFromTo(o.min, Add(o.max, pointOffset));
+                matrix = MultiplyMatrices(model, GetMatrixFromTo(o.min, Add(o.max, pointOffset)));
             }
-            if(o.positioning == 'centered'){
+            else if(o.positioning == 'centered'){
                 var pointOffset = MulScalar(o.normal, o.sizeY*0.5);
-                matrix = GetMatrixFromTo(Sub(o.min, pointOffset), Add(o.max, pointOffset));
+                matrix = MultiplyMatrices(model, GetMatrixFromTo(Sub(o.min, pointOffset), Add(o.max, pointOffset)));
+            }
+            
+            var renderer = shapeRenderer.lit;
+            const selected = (depth == 0 && IsSelected(o)) || allSelected;
+            if(selected){
+                renderer = shapeRenderer.selected;
             }
             if(o.shape == 'box'){
-                objMesh.AddBox(matrix, o.color);
+                renderer.box(matrix, o.color);
             }
             else if(o.shape == 'cylinder'){
-                objMesh.AddCylinder(matrix, 32, o.color);
+                renderer.cylinder(matrix, o.color);
             }
             else if(o.shape == 'cone'){
-                objMesh.AddCone(matrix, 32, o.color);
+                renderer.cone(matrix, o.color);
             }
             else if(o.shape == 'sphere'){
-                objMesh.AddSphere(matrix, 32, o.color);
+                renderer.sphere(matrix, o.color);
             }
             else{
-                var mesh = GetMesh(prefabs[o.shape]);
-                objMesh.AddMesh(mesh, o.min);
+                RenderObjects(TranslateMatrix(o.min[0], o.min[1], o.min[2]), prefabs[o.shape], depth+1, selected);
             }
         }
-        return objMesh;
-    }
-
-    function UpdateObjects(){
-        var litMesh = GetMesh(objects.filter(o=>!IsSelected(o)));
-        var selectMesh = GetMesh(objects.filter(o=>IsSelected(o)));
-        litRenderer.SetObjMeshData(litMesh);
-        selectRenderer.SetObjMeshData(selectMesh);
     }
 
     function AxisMatrix(){
@@ -74,7 +70,6 @@ function LevelEditor(){
         MouseRay(mouse.position, (p, normal)=>{
             objects.push({shape, min:p, max:p, normal, sizeY, positioning, color});
             selectedID = objects.length-1;
-            UpdateObjects();
         });
     }
 
@@ -82,7 +77,6 @@ function LevelEditor(){
         MouseRay(mouse.position, (p, _)=>{
             var lastObject = objects[objects.length-1];
             lastObject.max = p;
-            UpdateObjects();
         });
     }
 
@@ -105,8 +99,7 @@ function LevelEditor(){
         gl.enable(gl.CULL_FACE);
         gl.enable(gl.DEPTH_TEST);
 
-        litRenderer.Render();
-        selectRenderer.Render();
+        RenderObjects(Identity(), objects, 0, false);
         gridRenderer.Render(GridPlaneMatrix());
 
         requestAnimationFrame(Render);
@@ -116,17 +109,15 @@ function LevelEditor(){
         objects = prefabs[prefabName];
         name = prefabName;
         RefreshValues();
-        UpdateObjects();
     }
 
-    var canvas = CreateCanvas(1000, 600);
+    const canvas = CreateCanvas(1000, 600);
     canvas.tabIndex = 0;
-    var gl = canvas.getContext('webgl2');
+    const gl = canvas.getContext('webgl2');
 
-    var camera = OrbitCamera(gl.canvas, [0,0,0], 40, 0, 0);
-    var litRenderer = LitRenderer(gl, camera);
-    var gridRenderer = GridRenderer(gl, camera, 100);
-    var selectRenderer = SimpleSelectRenderer(gl, camera);
+    const camera = OrbitCamera(gl.canvas, [0,0,0], 40, 0, 0);
+    const gridRenderer = GridRenderer(gl, camera, 100);
+    const shapeRenderer = ShapeRenderer(gl, camera);
 
     var name = 'scene';
     const defaultShapeOptions = ['box', 'cylinder', 'cone', 'sphere'];
@@ -143,7 +134,6 @@ function LevelEditor(){
 
     AddMouseDrag(gl.canvas, 0, StartDrag, ContinueDrag)
     var objects = [];
-    UpdateObjects();
     Render();
     var inspector = Div({width:'200px', float:'left'},[
         TextBox('name', ()=>name, v=>name = v),
@@ -156,13 +146,11 @@ function LevelEditor(){
         Button('SelectPrev', ()=>{
             if(selectedID > 0){
                 selectedID--;
-                UpdateObjects();
             }
         }),
         Button('SelectNext', ()=>{
             if(selectedID < objects.length){
                 selectedID++;
-                UpdateObjects();
             }
         }),
         Button('Pick', ()=>{
@@ -180,7 +168,6 @@ function LevelEditor(){
                 obj.color = color;
                 obj.positioning = positioning;
                 obj.sizeY = sizeY;
-                UpdateObjects();
             }
         }),
         Button('Delete', ()=>{
@@ -189,17 +176,14 @@ function LevelEditor(){
                 if(selectedID > 0){
                     selectedID--;
                 }
-                UpdateObjects();
             }
         }),
         Button('DeleteAll', ()=>{
             objects = [];
-            UpdateObjects();
         }),
         Button('SavePrefab', ()=>{
             SetShapeOptions(document.getElementById('shape'));
             prefabs[name] = objects;
-            UpdateObjects();
         }),
         Button('OpenPrefab', ()=>{
             OpenPrefab(shape);

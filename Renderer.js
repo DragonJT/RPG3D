@@ -24,10 +24,9 @@ class ObjMesh{
         this.indices.push(...mesh.indices.map(i=>i+vertexID));
     }
 
-    AddFace(positions, color, normals){
+    AddFace(positions, normals){
         var vertexID = this.positions.length / 3;
         this.positions.push(...positions.flat());
-        this.colors.push(...positions.map(_=>color).flat());
 
         if(!normals){
             var normal = Normal(positions[0], positions[1], positions[2]);
@@ -42,15 +41,15 @@ class ObjMesh{
         }
     }
 
-    AddPlane(matrix, color){
+    AddPlane(matrix){
         var a = MultiplyPoint(matrix, [-1,0,-1]);
         var b = MultiplyPoint(matrix, [-1,0,1]);
         var c = MultiplyPoint(matrix, [1,0,1]);
         var d = MultiplyPoint(matrix, [1,0,-1]);
-        this.AddFace([a,b,c,d], color);
+        this.AddFace([a,b,c,d]);
     }
 
-    AddSphere(matrix, pointCount, color){
+    AddSphere(matrix, pointCount){
         var deltaRadians = 2*Math.PI/pointCount;
         var radiansY = 0;
         for(var ii=0;ii<pointCount;ii++){
@@ -64,14 +63,14 @@ class ObjMesh{
                 var b = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians) * radius0, h0, Math.sin(radians + deltaRadians) * radius0]);
                 var c = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians) * radius1, h1, Math.sin(radians + deltaRadians) * radius1]);
                 var d = MultiplyPoint(matrix, [Math.cos(radians) * radius1, h1, Math.sin(radians) * radius1]);
-                this.AddFace([d,c,b,a], color);
+                this.AddFace([d,c,b,a]);
                 radians += deltaRadians;
             }
             radiansY += deltaRadians;
         }
     }
 
-    AddCylinder(matrix, pointCount, color){
+    AddCylinder(matrix, pointCount){
         var radians = 0;
         var deltaRadians = 2*Math.PI/pointCount;
         var topFace = [];
@@ -81,16 +80,16 @@ class ObjMesh{
             var b = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians), -1, Math.sin(radians + deltaRadians)]);
             var c = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians), 1, Math.sin(radians + deltaRadians)]);
             var d = MultiplyPoint(matrix, [Math.cos(radians), 1, Math.sin(radians)]);
-            this.AddFace([d,c,b,a], color);
+            this.AddFace([d,c,b,a]);
             radians += deltaRadians;
             topFace.push(a);
             bottomFace.push(d);
         }
-        this.AddFace(topFace, color);
-        this.AddFace(bottomFace.reverse(), color);
+        this.AddFace(topFace);
+        this.AddFace(bottomFace.reverse());
     }
 
-    AddCone(matrix, pointCount, color){
+    AddCone(matrix, pointCount){
         var radians = 0;
         var deltaRadians = 2*Math.PI/pointCount;
         var bottomFace = [];
@@ -99,14 +98,14 @@ class ObjMesh{
             var a = top;
             var b = MultiplyPoint(matrix, [Math.cos(radians + deltaRadians), -1, Math.sin(radians + deltaRadians)]);
             var c = MultiplyPoint(matrix, [Math.cos(radians), -1, Math.sin(radians)]);
-            this.AddFace([a,b,c], color);
+            this.AddFace([a,b,c]);
             radians += deltaRadians;
             bottomFace.push(c);
         }
-        this.AddFace(bottomFace, color);
+        this.AddFace(bottomFace);
     }
 
-    AddBox(matrix, color){
+    AddBox(matrix){
         var a = MultiplyPoint(matrix, [-1,-1,-1]);
         var b = MultiplyPoint(matrix, [-1,1,-1]);
         var c = MultiplyPoint(matrix, [1,1,-1]);
@@ -115,12 +114,12 @@ class ObjMesh{
         var f = MultiplyPoint(matrix, [-1,1,1]);
         var g = MultiplyPoint(matrix, [1,1,1]);
         var h = MultiplyPoint(matrix, [1,-1,1]);
-        this.AddFace([a,b,c,d], color);
-        this.AddFace([h,g,f,e], color);
-        this.AddFace([e,f,b,a], color);
-        this.AddFace([f,g,c,b], color);
-        this.AddFace([g,h,d,c], color);
-        this.AddFace([h,e,a,d], color);
+        this.AddFace([a,b,c,d]);
+        this.AddFace([h,g,f,e]);
+        this.AddFace([e,f,b,a]);
+        this.AddFace([f,g,c,b]);
+        this.AddFace([g,h,d,c]);
+        this.AddFace([h,e,a,d]);
     }
 
     LoadObj(data){
@@ -188,8 +187,7 @@ function ArrayBuffer(gl, size, type){
     return {id, size, type, SetData}
 }
 
-function Renderer(gl, vertCode, fragCode){
-    var program = CreateShaderProgram(gl, vertCode, fragCode)
+function Renderer(gl, program){
     var buffers = {};
     var uniforms = {};
     var indexBuffer = gl.createBuffer();
@@ -217,6 +215,9 @@ function Renderer(gl, vertCode, fragCode){
         var uniformNames = Object.getOwnPropertyNames(uniforms);
         for(var name of uniformNames){
             var uniform = uniforms[name];
+            if(uniform == null){
+                console.log(name);
+            }
             if(uniform.constructor.name == 'Array'){
                 if(uniform.length == 16){
                     const location = gl.getUniformLocation(program, name);
@@ -238,179 +239,170 @@ function Renderer(gl, vertCode, fragCode){
     return {SetIndexData, buffers, uniforms, Render};
 }
 
-function LitRenderer(gl, camera){
-    var model = Identity();
-    var vertCode =
-    `
-    attribute vec3 positions;
-    attribute vec3 normals;
-    attribute vec3 colors;
+function ShapeRenderer(gl, camera){
+    function LitProgram(){
+        var vertCode =
+        `
+        attribute vec3 positions;
+        attribute vec3 normals;
 
-    uniform mat4 view;
-    uniform mat4 projection;
-    uniform mat4 model;
-    uniform mat3 normalMatrix;
+        uniform mat4 view;
+        uniform mat4 projection;
+        uniform mat4 model;
+        uniform mat3 normalMatrix;
 
-    varying vec3 color;
-    varying vec3 normal;
-    varying vec3 fragPos;
+        varying vec3 normal;
+        varying vec3 fragPos;
 
-    void main(void) {
-        fragPos = vec3(model * vec4(positions, 1.0));
-        normal = normalMatrix * normals;  
-        color = colors;
-
-        gl_Position = projection * view * vec4(fragPos, 1.0);
-    }`;
+        void main(void) {
+            fragPos = vec3(model * vec4(positions, 1.0));
+            normal = normalMatrix * normals;  
+            gl_Position = projection * view * vec4(fragPos, 1.0);
+        }`;
             
-    var fragCode =
-    `
-    precision highp float;
+        var fragCode =
+        `
+        precision highp float;
 
-    uniform vec3 viewPos;
+        uniform vec3 viewPos;
+        uniform vec3 color;
 
-    varying vec3 color;
-    varying vec3 normal;
-    varying vec3 fragPos;
+        varying vec3 normal;
+        varying vec3 fragPos;
 
-    void main(void) {
-        vec3 lightColor = vec3(1,1,1);
-        vec3 lightDir = normalize(vec3(1,1,1));
+        void main(void) {
+            vec3 lightColor = vec3(1,1,1);
+            vec3 lightDir = normalize(vec3(1,1,1));
 
-        float ambientStrength = 0.1;
-        vec3 ambient = ambientStrength * lightColor;
-        
-        vec3 norm = normalize(normal);
-        float diff = max(dot(norm, lightDir), 0.0);
-        vec3 diffuse = diff * lightColor;
-        
-        float specularStrength = 0.5;
-        vec3 viewDir = normalize(viewPos - fragPos);
-        vec3 reflectDir = reflect(-lightDir, norm);  
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-        vec3 specular = specularStrength * spec * lightColor;  
+            float ambientStrength = 0.1;
+            vec3 ambient = ambientStrength * lightColor;
             
-        vec3 result = (ambient + diffuse + specular) * color;
-        gl_FragColor = vec4(result, 1.0);
-    }`;
-    var renderer = Renderer(gl, vertCode, fragCode);
-    renderer.buffers.positions = ArrayBuffer(gl, 3, gl.FLOAT);
-    renderer.buffers.normals = ArrayBuffer(gl, 3, gl.FLOAT);
-    renderer.buffers.colors = ArrayBuffer(gl, 3, gl.FLOAT);
+            vec3 norm = normalize(normal);
+            float diff = max(dot(norm, lightDir), 0.0);
+            vec3 diffuse = diff * lightColor;
+            
+            float specularStrength = 0.5;
+            vec3 viewDir = normalize(viewPos - fragPos);
+            vec3 reflectDir = reflect(-lightDir, norm);  
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+            vec3 specular = specularStrength * spec * lightColor;  
+                
+            vec3 result = (ambient + diffuse + specular) * color;
+            gl_FragColor = vec4(result, 1.0);
+        }`;
 
-    function SetData(positions, normals, colors, indices){
-        renderer.buffers.positions.SetData(positions);
-        renderer.buffers.normals.SetData(normals);
-        renderer.buffers.colors.SetData(colors);
-        renderer.SetIndexData(indices);
+        return CreateShaderProgram(gl, vertCode, fragCode);
     }
 
-    function SetObjMeshData(objMesh){
-        SetData(objMesh.positions, objMesh.normals, objMesh.colors, objMesh.indices);
+    function SelectedProgram(){
+        var vertCode =
+        `
+        attribute vec3 positions;
+        attribute vec3 normals;
+        attribute vec3 colors;
+    
+        uniform mat4 view;
+        uniform mat4 projection;
+        uniform mat4 model;
+        uniform mat3 normalMatrix;
+    
+        varying vec3 normal;
+        varying vec3 fragPos;
+    
+        void main(void) {
+            fragPos = vec3(model * vec4(positions, 1.0));
+            normal = normalMatrix * normals;  
+            gl_Position = projection * view * vec4(fragPos, 1.0);
+        }`;
+                
+        var fragCode =
+        `
+        precision highp float;
+    
+        uniform vec3 viewPos;
+        uniform vec3 color;
+
+        varying vec3 normal;
+        varying vec3 fragPos;
+    
+        void main(void) {
+            float f = fract((fragPos.x + fragPos.y + fragPos.z) * 0.5);
+    
+            vec3 lightColor = vec3(1,1,1);
+            vec3 lightDir = normalize(vec3(1,1,1));
+    
+            float ambientStrength = 0.1;
+            vec3 ambient = ambientStrength * lightColor;
+            
+            vec3 norm = normalize(normal);
+            float diff = max(dot(norm, lightDir), 0.0);
+            vec3 diffuse = diff * lightColor;
+            
+            float specularStrength = 0.5;
+            vec3 viewDir = normalize(viewPos - fragPos);
+            vec3 reflectDir = reflect(-lightDir, norm);  
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+            vec3 specular = specularStrength * spec * lightColor;  
+                
+            vec3 result = (ambient + diffuse + specular) * color;
+            if(f>0.8){
+                result = 1.0-result;
+            }
+            gl_FragColor = vec4(result, 1.0);
+        }`;
+        return CreateShaderProgram(gl, vertCode, fragCode);
+    }
+    const litProgram = LitProgram();
+    const selectedProgram = SelectedProgram();
+
+    function InitRenderer(gl, program, objMesh){
+        var renderer = Renderer(gl, program);
+        renderer.buffers.positions = ArrayBuffer(gl, 3, gl.FLOAT);
+        renderer.buffers.normals = ArrayBuffer(gl, 3, gl.FLOAT);
+        renderer.buffers.positions.SetData(objMesh.positions);
+        renderer.buffers.normals.SetData(objMesh.normals);
+        renderer.SetIndexData(objMesh.indices);
+
+        function Render(model, color){
+            var normalMatrix = NormalMatrix(model);
+            if(normalMatrix == null){
+                return;
+            }
+            const u = renderer.uniforms;
+            u.model = model;
+            u.view = camera.GetView();
+            u.projection = camera.GetProjection();
+            u.viewPos = camera.GetPosition();
+            u.normalMatrix = normalMatrix;
+            u.color = color;
+            renderer.Render(gl.TRIANGLES);
+        }    
+        return Render;
     }
 
-    function Render(){
-        const u = renderer.uniforms;
-        u.model = model;
-        u.view = camera.GetView();
-        u.projection = camera.GetProjection();
-        u.viewPos = camera.GetPosition();
-        u.normalMatrix = NormalMatrix(model);
-        renderer.Render(gl.TRIANGLES);
-    }    
+    const boxMesh = new ObjMesh();
+    boxMesh.AddBox(Identity());
+    const cylinderMesh = new ObjMesh();
+    cylinderMesh.AddCylinder(Identity(), 32);
+    const sphereMesh = new ObjMesh();
+    sphereMesh.AddSphere(Identity(), 32);
+    const coneMesh = new ObjMesh();
+    coneMesh.AddCone(Identity(), 32);
 
-    return {SetObjMeshData, Render};
+    const lit = {};
+    const selected = {};
+
+    function AddShapeToRenderer(mesh, name){
+        lit[name] = InitRenderer(gl, litProgram, mesh);
+        selected[name] = InitRenderer(gl, selectedProgram, mesh);
+    }
+    
+    AddShapeToRenderer(boxMesh, 'box');
+    AddShapeToRenderer(cylinderMesh, 'cylinder');
+    AddShapeToRenderer(sphereMesh, 'sphere');
+    AddShapeToRenderer(coneMesh, 'cone');
+    return {lit, selected};
 }
-
-function SimpleSelectRenderer(gl, camera){
-    var model = Identity();
-    var vertCode =
-    `
-    attribute vec3 positions;
-    attribute vec3 normals;
-    attribute vec3 colors;
-
-    uniform mat4 view;
-    uniform mat4 projection;
-    uniform mat4 model;
-    uniform mat3 normalMatrix;
-
-    varying vec3 color;
-    varying vec3 normal;
-    varying vec3 fragPos;
-
-    void main(void) {
-        fragPos = vec3(model * vec4(positions, 1.0));
-        normal = normalMatrix * normals;  
-        color = colors;
-
-        gl_Position = projection * view * vec4(fragPos, 1.0);
-    }`;
-            
-    var fragCode =
-    `
-    precision highp float;
-
-    uniform vec3 viewPos;
-
-    varying vec3 color;
-    varying vec3 normal;
-    varying vec3 fragPos;
-
-    void main(void) {
-        float f = fract((fragPos.x + fragPos.y + fragPos.z) * 0.5);
-
-        vec3 lightColor = vec3(1,1,1);
-        vec3 lightDir = normalize(vec3(1,1,1));
-
-        float ambientStrength = 0.1;
-        vec3 ambient = ambientStrength * lightColor;
-        
-        vec3 norm = normalize(normal);
-        float diff = max(dot(norm, lightDir), 0.0);
-        vec3 diffuse = diff * lightColor;
-        
-        float specularStrength = 0.5;
-        vec3 viewDir = normalize(viewPos - fragPos);
-        vec3 reflectDir = reflect(-lightDir, norm);  
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-        vec3 specular = specularStrength * spec * lightColor;  
-            
-        vec3 result = (ambient + diffuse + specular) * color;
-        if(f>0.8){
-            result = 1.0-result;
-        }
-        gl_FragColor = vec4(result, 1.0);
-    }`;
-    var renderer = Renderer(gl, vertCode, fragCode);
-    renderer.buffers.positions = ArrayBuffer(gl, 3, gl.FLOAT);
-    renderer.buffers.normals = ArrayBuffer(gl, 3, gl.FLOAT);
-    renderer.buffers.colors = ArrayBuffer(gl, 3, gl.FLOAT);
-
-    function SetData(positions, normals, colors, indices){
-        renderer.buffers.positions.SetData(positions);
-        renderer.buffers.normals.SetData(normals);
-        renderer.buffers.colors.SetData(colors);
-        renderer.SetIndexData(indices);
-    }
-
-    function SetObjMeshData(objMesh){
-        SetData(objMesh.positions, objMesh.normals, objMesh.colors, objMesh.indices);
-    }
-
-    function Render(){
-        const u = renderer.uniforms;
-        u.model = model;
-        u.view = camera.GetView();
-        u.projection = camera.GetProjection();
-        u.viewPos = camera.GetPosition();
-        u.normalMatrix = NormalMatrix(model);
-        renderer.Render(gl.TRIANGLES);
-    }    
-
-    return {SetObjMeshData, Render};
-}
-
 
 function GridRenderer(gl, camera, radiusCount){
     var vertCode =
@@ -470,7 +462,7 @@ function GridRenderer(gl, camera, radiusCount){
         vertexID+=2;
     }
     
-    var renderer = Renderer(gl, vertCode, fragCode);
+    var renderer = Renderer(gl, CreateShaderProgram(gl, vertCode, fragCode));
     renderer.buffers.positions = ArrayBuffer(gl, 3, gl.FLOAT);
     renderer.buffers.colors = ArrayBuffer(gl, 3, gl.FLOAT);
     renderer.buffers.positions.SetData(positions);
