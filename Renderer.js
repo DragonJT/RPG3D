@@ -308,6 +308,96 @@ function LitRenderer(gl, camera){
     return {SetObjMeshData, Render};
 }
 
+function SimpleSelectRenderer(gl, camera){
+    var model = Identity();
+    var vertCode =
+    `
+    attribute vec3 positions;
+    attribute vec3 normals;
+    attribute vec3 colors;
+
+    uniform mat4 view;
+    uniform mat4 projection;
+    uniform mat4 model;
+    uniform mat3 normalMatrix;
+
+    varying vec3 color;
+    varying vec3 normal;
+    varying vec3 fragPos;
+
+    void main(void) {
+        fragPos = vec3(model * vec4(positions, 1.0));
+        normal = normalMatrix * normals;  
+        color = colors;
+
+        gl_Position = projection * view * vec4(fragPos, 1.0);
+    }`;
+            
+    var fragCode =
+    `
+    precision highp float;
+
+    uniform vec3 viewPos;
+
+    varying vec3 color;
+    varying vec3 normal;
+    varying vec3 fragPos;
+
+    void main(void) {
+        float f = fract((fragPos.x + fragPos.y + fragPos.z) * 0.5);
+
+        vec3 lightColor = vec3(1,1,1);
+        vec3 lightDir = normalize(vec3(1,1,1));
+
+        float ambientStrength = 0.1;
+        vec3 ambient = ambientStrength * lightColor;
+        
+        vec3 norm = normalize(normal);
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 diffuse = diff * lightColor;
+        
+        float specularStrength = 0.5;
+        vec3 viewDir = normalize(viewPos - fragPos);
+        vec3 reflectDir = reflect(-lightDir, norm);  
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+        vec3 specular = specularStrength * spec * lightColor;  
+            
+        vec3 result = (ambient + diffuse + specular) * color;
+        if(f>0.8){
+            result = 1.0-result;
+        }
+        gl_FragColor = vec4(result, 1.0);
+    }`;
+    var renderer = Renderer(gl, vertCode, fragCode);
+    renderer.buffers.positions = ArrayBuffer(gl, 3, gl.FLOAT);
+    renderer.buffers.normals = ArrayBuffer(gl, 3, gl.FLOAT);
+    renderer.buffers.colors = ArrayBuffer(gl, 3, gl.FLOAT);
+
+    function SetData(positions, normals, colors, indices){
+        renderer.buffers.positions.SetData(positions);
+        renderer.buffers.normals.SetData(normals);
+        renderer.buffers.colors.SetData(colors);
+        renderer.SetIndexData(indices);
+    }
+
+    function SetObjMeshData(objMesh){
+        SetData(objMesh.positions, objMesh.normals, objMesh.colors, objMesh.indices);
+    }
+
+    function Render(){
+        const u = renderer.uniforms;
+        u.model = model;
+        u.view = camera.GetView();
+        u.projection = camera.GetProjection();
+        u.viewPos = camera.GetPosition();
+        u.normalMatrix = NormalMatrix(model);
+        renderer.Render(gl.TRIANGLES);
+    }    
+
+    return {SetObjMeshData, Render};
+}
+
+
 function GridRenderer(gl, camera, radiusCount){
     var vertCode =
     `

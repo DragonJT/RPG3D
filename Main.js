@@ -1,8 +1,13 @@
 
 function LevelEditor(){
 
+    function IsSelected(obj){
+        return obj == objects[selectedID];
+    }
+
     function UpdateObjects(){
-        objMesh.Clear();
+        var litMesh = new ObjMesh();
+        var selectMesh = new ObjMesh();
         for(var o of objects){
             var matrix;
             if(o.positioning == 'ontop'){
@@ -12,6 +17,10 @@ function LevelEditor(){
             if(o.positioning == 'centered'){
                 var pointOffset = MulScalar(o.normal, o.sizeY*0.5);
                 matrix = GetMatrixFromTo(Sub(o.min, pointOffset), Add(o.max, pointOffset));
+            }
+            var objMesh = litMesh;
+            if(IsSelected(o)){
+                objMesh = selectMesh;
             }
             if(o.shape == 'box'){
                 objMesh.AddBox(matrix, o.color);
@@ -26,7 +35,8 @@ function LevelEditor(){
                 objMesh.AddSphere(matrix, 32, o.color);
             }
         }
-        litRenderer.SetObjMeshData(objMesh);
+        litRenderer.SetObjMeshData(litMesh);
+        selectRenderer.SetObjMeshData(selectMesh);
     }
 
     function AxisMatrix(){
@@ -46,7 +56,10 @@ function LevelEditor(){
     }
 
     function StartDrag(){
-        MouseRay(mouse.position, (p, normal)=>objects.push({shape, min:p, max:p, normal, sizeY, positioning, color}));
+        MouseRay(mouse.position, (p, normal)=>{
+            objects.push({shape, min:p, max:p, normal, sizeY, positioning, color});
+            selectedID = objects.length-1;
+        });
     }
 
     function ContinueDrag(){
@@ -75,9 +88,11 @@ function LevelEditor(){
         gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
         gl.enable(gl.CULL_FACE);
         gl.enable(gl.DEPTH_TEST);
-        litRenderer.Render();
 
+        litRenderer.Render();
+        selectRenderer.Render();
         gridRenderer.Render(GridPlaneMatrix());
+
         requestAnimationFrame(Render);
     }
 
@@ -85,11 +100,12 @@ function LevelEditor(){
     canvas.tabIndex = 0;
     var gl = canvas.getContext('webgl2');
 
-    var objMesh = new ObjMesh();
     var camera = OrbitCamera(gl.canvas, [0,0,0], 40, 0, 0);
     var litRenderer = LitRenderer(gl, camera);
     var gridRenderer = GridRenderer(gl, camera, 100);
+    var selectRenderer = SimpleSelectRenderer(gl, camera);
 
+    var selectedID = 0;
     var axis = 'xz';
     var mouse = AddMouseMove(canvas);
     var gridY = 0;
@@ -104,25 +120,48 @@ function LevelEditor(){
     UpdateObjects();
     Render();
     var inspector = Div({width:'200px', float:'left'},[
-        Select('axis', ['xy', 'xz', 'yz'], axis, v=>axis = v),
-        Select('shape', ['box', 'cylinder', 'cone', 'sphere'], shape, v=>shape = v),
-        Select('positioning', ['ontop', 'centered'], positioning, v=>positioning = v),
-        ColorBox('color', color, v=>color=v),
-        FloatBox('gridY', gridY, v=>gridY = v),
-        FloatBox('sizeY', sizeY, v=>sizeY = v),
-        Button('ApplyToLast', ()=>{
-            if(objects.length>0){
-                var last = objects[objects.length-1];
-                last.shape = shape;
-                last.color = color;
-                last.positioning = positioning;
-                last.sizeY = sizeY;
+        Select('axis', ['xy', 'xz', 'yz'], ()=>axis, v=>axis = v),
+        Select('shape', ['box', 'cylinder', 'cone', 'sphere'], ()=>shape, v=>shape = v),
+        Select('positioning', ['ontop', 'centered'], ()=>positioning, v=>positioning = v),
+        ColorBox('color', ()=>color, v=>color=v),
+        FloatBox('gridY', ()=>gridY, v=>gridY = v),
+        FloatBox('sizeY', ()=>sizeY, v=>sizeY = v),
+        Button('SelectPrev', ()=>{
+            if(selectedID > 0){
+                selectedID--;
                 UpdateObjects();
             }
         }),
-        Button('DeleteLast', ()=>{
+        Button('SelectNext', ()=>{
+            if(selectedID < objects.length-1){
+                selectedID++;
+                UpdateObjects();
+            }
+        }),
+        Button('Pick', ()=>{
+            var obj = objects[selectedID];
+            shape = obj.shape;
+            color = obj.color;
+            positioning = obj.positioning;
+            sizeY = obj.sizeY;
+            RefreshValues();
+        }),
+        Button('Apply', ()=>{
             if(objects.length>0){
-                objects.pop();
+                var obj = objects[selectedID];
+                obj.shape = shape;
+                obj.color = color;
+                obj.positioning = positioning;
+                obj.sizeY = sizeY;
+                UpdateObjects();
+            }
+        }),
+        Button('Delete', ()=>{
+            if(objects.length>0){
+                objects.splice(selectedID, 1);
+                if(selectedID > 0){
+                    selectedID--;
+                }
                 UpdateObjects();
             }
         }),

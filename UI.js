@@ -6,35 +6,38 @@ function CreateCanvas(width, height){
     return canvas;
 }
 
-function Select(name, options, value, onchange){
+function Select(name, options, getValue, onchange){
     var label = document.createElement('label');
     label.innerHTML = name;
     label.htmlFor = name;
 
     var select = document.createElement('select');
     select.id = name;
-    var optionsHTML = '';
     for(var o of options){
-        if(o == value){
-            optionsHTML += '<option selected>'+o+'</option>';
-        }
-        else{
-            optionsHTML += '<option>'+o+'</option>';
-        }
+        var option = document.createElement('option');
+        option.value = o;
+        option.innerHTML = o;
+        select.appendChild(option);
     }
-    select.innerHTML = optionsHTML;
+    select.value = getValue();
+    select.refreshValue = ()=>{
+        select.value = getValue();
+    }
     select.onchange = ()=>onchange(select.value);
     return Div({}, [label, select]);
 }
 
-function FloatBox(name, value, onchange){
+function FloatBox(name, getValue, onchange){
     var label = document.createElement('label');
     label.innerHTML = name;
     label.htmlFor = name;
 
     var input = document.createElement('input');
     input.type = 'number';
-    input.value = value;
+    input.value = getValue();
+    input.refreshValue = ()=>{
+        input.value = getValue();
+    }
     input.onchange = ()=>{
         var value = parseFloat(input.value);
         onchange(value);
@@ -42,14 +45,17 @@ function FloatBox(name, value, onchange){
     return Div({}, [label, input]);
 }
 
-function ColorBox(name, value, onchange){
+function ColorBox(name, getValue, onchange){
     var label = document.createElement('label');
     label.innerHTML = name;
     label.htmlFor = name;
 
     var input = document.createElement('input');
     input.type = 'color';
-    input.value = RGB2Hex(value);
+    input.value = RGB2Hex(getValue());
+    input.refreshValue = ()=>{
+        input.value = RGB2Hex(getValue());
+    }
     input.onchange = ()=>{
         var color = Hex2RGB(input.value);
         onchange(color);
@@ -74,4 +80,16 @@ function Div(style, children){
         div.appendChild(c);
     }
     return div;
+}
+
+function RefreshValues(){
+    function RefreshWithTag(tag){
+        for(var c of document.body.getElementsByTagName(tag)){
+            if(c.refreshValue){
+                c.refreshValue();
+            }
+        }
+    }
+    RefreshWithTag('input');
+    RefreshWithTag('select');
 }
