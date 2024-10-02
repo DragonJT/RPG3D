@@ -10,6 +10,20 @@ class ObjMesh{
         this.indices = [];
     }
 
+    AddMesh(mesh, position){
+        var vertexID = this.positions.length/3;
+        var positions = [];
+        for(var i=0;i<mesh.positions.length;i+=3){
+            positions.push(mesh.positions[i] + position[0]);
+            positions.push(mesh.positions[i+1] + position[1]);
+            positions.push(mesh.positions[i+2] + position[2]);
+        }
+        this.positions.push(...positions);
+        this.colors.push(...mesh.colors);
+        this.normals.push(...mesh.normals);
+        this.indices.push(...mesh.indices.map(i=>i+vertexID));
+    }
+
     AddFace(positions, color, normals){
         var vertexID = this.positions.length / 3;
         this.positions.push(...positions.flat());

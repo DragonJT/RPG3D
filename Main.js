@@ -1,13 +1,22 @@
 
 function LevelEditor(){
 
+    function SetShapeOptions(select){
+        select.innerHTML = '';
+        for(var o of defaultShapeOptions){
+            CreateOption(select, o);
+        }
+        for(var key of Object.keys(prefabs)){
+            CreateOption(select, key);
+        }
+    }
+
     function IsSelected(obj){
         return obj == objects[selectedID];
     }
 
-    function UpdateObjects(){
-        var litMesh = new ObjMesh();
-        var selectMesh = new ObjMesh();
+    function GetMesh(objects){
+        var objMesh = new ObjMesh();
         for(var o of objects){
             var matrix;
             if(o.positioning == 'ontop'){
@@ -17,10 +26,6 @@ function LevelEditor(){
             if(o.positioning == 'centered'){
                 var pointOffset = MulScalar(o.normal, o.sizeY*0.5);
                 matrix = GetMatrixFromTo(Sub(o.min, pointOffset), Add(o.max, pointOffset));
-            }
-            var objMesh = litMesh;
-            if(IsSelected(o)){
-                objMesh = selectMesh;
             }
             if(o.shape == 'box'){
                 objMesh.AddBox(matrix, o.color);
@@ -34,7 +39,17 @@ function LevelEditor(){
             else if(o.shape == 'sphere'){
                 objMesh.AddSphere(matrix, 32, o.color);
             }
+            else{
+                var mesh = GetMesh(prefabs[o.shape]);
+                objMesh.AddMesh(mesh, o.min);
+            }
         }
+        return objMesh;
+    }
+
+    function UpdateObjects(){
+        var litMesh = GetMesh(objects.filter(o=>!IsSelected(o)));
+        var selectMesh = GetMesh(objects.filter(o=>IsSelected(o)));
         litRenderer.SetObjMeshData(litMesh);
         selectRenderer.SetObjMeshData(selectMesh);
     }
@@ -59,6 +74,7 @@ function LevelEditor(){
         MouseRay(mouse.position, (p, normal)=>{
             objects.push({shape, min:p, max:p, normal, sizeY, positioning, color});
             selectedID = objects.length-1;
+            UpdateObjects();
         });
     }
 
@@ -96,6 +112,13 @@ function LevelEditor(){
         requestAnimationFrame(Render);
     }
 
+    function OpenPrefab(prefabName){
+        objects = prefabs[prefabName];
+        name = prefabName;
+        RefreshValues();
+        UpdateObjects();
+    }
+
     var canvas = CreateCanvas(1000, 600);
     canvas.tabIndex = 0;
     var gl = canvas.getContext('webgl2');
@@ -105,6 +128,9 @@ function LevelEditor(){
     var gridRenderer = GridRenderer(gl, camera, 100);
     var selectRenderer = SimpleSelectRenderer(gl, camera);
 
+    var name = 'scene';
+    const defaultShapeOptions = ['box', 'cylinder', 'cone', 'sphere'];
+    prefabs = {};
     var selectedID = 0;
     var axis = 'xz';
     var mouse = AddMouseMove(canvas);
@@ -120,12 +146,13 @@ function LevelEditor(){
     UpdateObjects();
     Render();
     var inspector = Div({width:'200px', float:'left'},[
+        TextBox('name', ()=>name, v=>name = v),
         Select('axis', ['xy', 'xz', 'yz'], ()=>axis, v=>axis = v),
-        Select('shape', ['box', 'cylinder', 'cone', 'sphere'], ()=>shape, v=>shape = v),
+        Select('shape', defaultShapeOptions, ()=>shape, v=>shape = v),
         Select('positioning', ['ontop', 'centered'], ()=>positioning, v=>positioning = v),
         ColorBox('color', ()=>color, v=>color=v),
-        FloatBox('gridY', ()=>gridY, v=>gridY = v),
-        FloatBox('sizeY', ()=>sizeY, v=>sizeY = v),
+        NumberBox('gridY', ()=>gridY, v=>gridY = v),
+        NumberBox('sizeY', ()=>sizeY, v=>sizeY = v),
         Button('SelectPrev', ()=>{
             if(selectedID > 0){
                 selectedID--;
@@ -133,7 +160,7 @@ function LevelEditor(){
             }
         }),
         Button('SelectNext', ()=>{
-            if(selectedID < objects.length-1){
+            if(selectedID < objects.length){
                 selectedID++;
                 UpdateObjects();
             }
@@ -164,6 +191,28 @@ function LevelEditor(){
                 }
                 UpdateObjects();
             }
+        }),
+        Button('DeleteAll', ()=>{
+            objects = [];
+            UpdateObjects();
+        }),
+        Button('SavePrefab', ()=>{
+            SetShapeOptions(document.getElementById('shape'));
+            prefabs[name] = objects;
+            UpdateObjects();
+        }),
+        Button('OpenPrefab', ()=>{
+            OpenPrefab(shape);
+        }),
+        Button('Save/Download', ()=>{
+            Download('level.json', JSON.stringify(prefabs));
+        }),
+        Button('load/Upload', ()=>{
+            FileUploader(f=>{
+                prefabs = JSON.parse(f);
+                SetShapeOptions(document.getElementById('shape'));
+                OpenPrefab(Object.keys(prefabs)[0]);
+            });
         }),
     ]);
     var canvasDiv = Div({marginLeft:'220px'},[canvas]);

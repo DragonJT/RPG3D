@@ -16,7 +16,7 @@ function RGB2Hex(color) {
     return "#" + Component2Hex(color[0] * 255) + Component2Hex(color[1] * 255) + Component2Hex(color[2] * 255);
   }
 
-function download(filename, text) {
+function Download(filename, text) {
     var element = document.createElement('a');
     element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
     element.setAttribute('download', filename);

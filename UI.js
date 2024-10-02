@@ -6,6 +6,13 @@ function CreateCanvas(width, height){
     return canvas;
 }
 
+function CreateOption(select, value){
+    var option = document.createElement('option');
+    option.value = value;
+    option.innerHTML = value;
+    select.appendChild(option);
+}
+
 function Select(name, options, getValue, onchange){
     var label = document.createElement('label');
     label.innerHTML = name;
@@ -14,10 +21,7 @@ function Select(name, options, getValue, onchange){
     var select = document.createElement('select');
     select.id = name;
     for(var o of options){
-        var option = document.createElement('option');
-        option.value = o;
-        option.innerHTML = o;
-        select.appendChild(option);
+        CreateOption(select, o);
     }
     select.value = getValue();
     select.refreshValue = ()=>{
@@ -27,7 +31,24 @@ function Select(name, options, getValue, onchange){
     return Div({}, [label, select]);
 }
 
-function FloatBox(name, getValue, onchange){
+function TextBox(name, getValue, onchange){
+    var label = document.createElement('label');
+    label.innerHTML = name;
+    label.htmlFor = name;
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.value = getValue();
+    input.refreshValue = ()=>{
+        input.value = getValue();
+    }
+    input.onchange = ()=>{
+        onchange(input.value);
+    };
+    return Div({}, [label, input]);
+}
+
+function NumberBox(name, getValue, onchange){
     var label = document.createElement('label');
     label.innerHTML = name;
     label.htmlFor = name;
